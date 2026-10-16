@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ドライブがくしゅう</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #87ceeb;
+    font-family: "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif; touch-action: none; }
+  #game { position: fixed; inset: 0; }
+  #game canvas { display: block; width: 100%; height: 100%; }
+  .hidden { display: none !important; }
+
+  /* HUD */
+  #top { position: fixed; top: 10px; left: 10px; right: 10px; display: flex; gap: 10px; align-items: flex-start; pointer-events: none; }
+  #top > * { pointer-events: auto; }
+  .round { width: 60px; height: 60px; border-radius: 50%; border: 4px solid #fff; background: #ff9800; color: #fff;
+    font-size: 28px; box-shadow: 0 4px 0 rgba(0,0,0,.25); cursor: pointer; flex: none; }
+  .round:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+  #qbox { flex: 1; background: rgba(255,255,255,.92); border: 4px solid #fff; border-radius: 22px; padding: 8px 14px;
+    text-align: center; box-shadow: 0 4px 0 rgba(0,0,0,.2); min-height: 60px; }
+  #qvis { font-size: clamp(22px, 5vw, 38px); line-height: 1.15; min-height: 1em; word-break: break-all; }
+  #qvis .big { font-size: clamp(54px, 11vw, 90px); }
+  #qvis .dim { opacity: .2; filter: grayscale(1); }
+  #qvis .op { font-weight: bold; margin: 0 .3em; color: #e65100; }
+  #qtext { font-size: clamp(22px, 5vw, 40px); font-weight: bold; color: #37474f; }
+  #stars { background: #fff8e1; border: 4px solid #fff; border-radius: 30px; padding: 0 14px; height: 60px; line-height: 52px;
+    font-size: 26px; font-weight: bold; color: #f57f17; box-shadow: 0 4px 0 rgba(0,0,0,.2); flex: none; }
+  #msg { position: fixed; top: 40%; left: 0; right: 0; text-align: center; font-size: clamp(48px, 12vw, 110px); font-weight: bold;
+    color: #fff; text-shadow: 0 6px 0 rgba(0,0,0,.3), 0 0 20px rgba(0,0,0,.3); pointer-events: none; opacity: 0; }
+  #msg.show { animation: pop 1.6s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.4); } 15% { opacity: 1; transform: scale(1.15); } 25% { transform: scale(1); }
+    80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
+  #ctrl { position: fixed; bottom: 18px; left: 18px; right: 18px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
+  #ctrl button { pointer-events: auto; border: 5px solid #fff; border-radius: 28px; color: #fff; cursor: pointer;
+    box-shadow: 0 6px 0 rgba(0,0,0,.3); opacity: .92; }
+  #ctrl button:active, #ctrl button.on { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .steer { width: clamp(100px, 22vw, 160px); height: clamp(90px, 18vw, 130px); font-size: clamp(44px, 9vw, 70px); background: #29b6f6; }
+  #pause { width: 70px; height: 70px; font-size: 30px; background: #ab47bc; border-radius: 50% !important; }
+  #pausedLabel { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 60px; font-weight: bold;
+    color: #fff; text-shadow: 0 4px 0 rgba(0,0,0,.4); background: rgba(0,0,0,.25); pointer-events: none; }
+  .fx { position: fixed; font-size: 40px; pointer-events: none; animation: fly 1.4s ease-out forwards; }
+  @keyframes fly { from { transform: translate(0,0) scale(.6); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) rotate(360deg) scale(1.3); opacity: 0; } }
+
+  /* メニュー */
+  #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: linear-gradient(#81d4fa, #c5e1a5); padding: 16px; overflow: auto; }
+  #menu h1 { margin: 0; font-size: clamp(34px, 8vw, 64px); color: #fff; text-shadow: 0 5px 0 #0288d1; letter-spacing: .05em; }
+  #menu p { margin: 0; font-size: clamp(16px, 3.5vw, 22px); color: #37474f; font-weight: bold; }
+  #modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; width: min(760px, 100%); }
+  .mode { border: 5px solid #fff; border-radius: 26px; color: #fff; font-size: clamp(24px, 5vw, 34px); font-weight: bold; padding: 14px 8px;
+    cursor: pointer; box-shadow: 0 7px 0 rgba(0,0,0,.25); font-family: inherit; }
+  .mode:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .mode small { display: block; font-size: .5em; font-weight: normal; opacity: .95; }
+  #menuStars { font-size: 26px; font-weight: bold; color: #f57f17; background: #fff; border-radius: 30px; padding: 4px 20px; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud" class="hidden">
+  <div id="top">
+    <button class="round" id="homeBtn" title="もどる">🏠</button>
+    <div id="qbox"><div id="qvis"></div><div id="qtext"></div></div>
+    <button class="round" id="speakBtn" title="もういちど">🔊</button>
+    <div id="stars">⭐ 0</div>
+  </div>
+  <div id="msg"></div>
+  <div id="ctrl">
+    <button class="steer" id="left">◀</button>
+    <button id="pause">⏸</button>
+    <button class="steer" id="right">▶</button>
+  </div>
+  <div id="pausedLabel" class="hidden">⏸ おやすみ</div>
+</div>
+
+<div id="menu">
+  <h1>🚗 ドライブがくしゅう</h1>
+  <p>くるまを うんてんして ただしい ゲートを とおろう！</p>
+  <div id="menuStars">⭐ 0</div>
+  <div id="modes">
+    <button class="mode" data-mode="count"  style="background:#ef5350">🍎 かぞえよう<small>いくつ あるかな？</small></button>
+    <button class="mode" data-mode="add"    style="background:#ff9800">➕ たしざん<small>1〜10まで</small></button>
+    <button class="mode" data-mode="sub"    style="background:#26a69a">➖ ひきざん<small>1〜10まで</small></button>
+    <button class="mode" data-mode="word"   style="background:#5c6bc0">🐶 ことば<small>これは なあに？</small></button>
+    <button class="mode" data-mode="letter" style="background:#ab47bc">あ なにから はじまる？<small>さいしょの もじ</small></button>
+  </div>
+  <p style="font-size:14px;font-weight:normal">▶ ◀ ボタン（またはキーボードの ← →）で ハンドル ／ 🔊 で もういちど よむよ</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ================= もんだい ================= */
+const KANA_NUM = ['れい','いち','に','さん','よん','ご','ろく','なな','はち','きゅう','じゅう'];
+const WORDS = [
+  ['🍎','りんご'],['🍌','ばなな'],['🐶','いぬ'],['🐱','ねこ'],['🐟','さかな'],['🚗','くるま'],
+  ['🐮','うし'],['🐦','とり'],['🐢','かめ'],['🐘','ぞう'],['🐰','うさぎ'],['🍇','ぶどう'],
+  ['🍓','いちご'],['🍉','すいか'],['✈️','ひこうき'],['🚃','でんしゃ'],['🌻','ひまわり'],['🌙','つき'],
+  ['🌳','き'],['⭐','ほし'],['🍙','おにぎり'],['🦁','らいおん'],['🐸','かえる'],['🐻','くま'],
+  ['🐴','うま'],['🐵','さる'],['🦊','きつね'],['🍄','きのこ'],['🌸','さくら'],['🏠','いえ']
+];
+const FOODS = ['🍎','🍊','🍓','🍇','🍌','🍉'];
+
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let sessionCorrect = 0;
+const maxNum = () => sessionCorrect < 4 ? 5 : 10;
+
+// 正解 ans のほかに、ちがう数字を2つ
+function numChoices(ans, lo, hi) {
+  const set = new Set([ans]);
+  const cand = shuffle([...Array(hi - lo + 1).keys()].map(i => i + lo)).filter(n => Math.abs(n - ans) <= 3);
+  for (const n of cand) { if (set.size >= 3) break; set.add(n); }
+  for (let n = lo; set.size < 3 && n <= hi; n++) set.add(n);
+  return [...set].map(n => ({ label: String(n), say: KANA_NUM[n], correct: n === ans }));
+}
+
+function makeQuestion(mode) {
+  const max = maxNum();
+  if (mode === 'count') {
+    const n = rnd(1, Math.min(max, 9) + (max >= 10 ? 1 : 0));
+    const f = pick(FOODS);
+    return { vis: `<span class="big">${f.repeat(n)}</span>`.replace(/<span class="big">(.*)<\/span>/, (m, s) => `<span class="${n > 6 ? '' : 'big'}">${s}</span>`),
+             text: 'いくつ あるかな？', say: 'いくつ あるかな？', choices: numChoices(n, 1, 10), ansSay: KANA_NUM[n] };
+  }
+  if (mode === 'add') {
+    const a = rnd(1, max - 1), b = rnd(1, max - a), f = pick(FOODS);
+    return { vis: `${f.repeat(a)}<span class="op">＋</span>${f.repeat(b)}`,
+             text: `${a} ＋ ${b} ＝ ？`, say: `${KANA_NUM[a]} たす ${KANA_NUM[b]} は？`,
+             choices: numChoices(a + b, 0, 10), ansSay: KANA_NUM[a + b] };
+  }
+  if (mode === 'sub') {
+    const a = rnd(2, max), b = rnd(1, a - 1), f = pick(FOODS);
+    return { vis: f.repeat(a - b) + `<span class="dim">${f.repeat(b)}</span>`,
+             text: `${a} ー ${b} ＝ ？`, say: `${KANA_NUM[a]} ひく ${KANA_NUM[b]} は？`,
+             choices: numChoices(a - b, 0, 10), ansSay: KANA_NUM[a - b] };
+  }
+  if (mode === 'word') {
+    const w = pick(WORDS);
+    const others = shuffle(WORDS.filter(x => x[1] !== w[1]));
+    const three = [w, others[0], others[1]];
+    return { vis: `<span class="big">${w[0]}</span>`, text: 'これは なあに？', say: 'これは なあに？',
+             choices: three.map(x => ({ label: x[1], say: x[1], correct: x === w })), ansSay: w[1] };
+  }
+  // letter
+  const w = pick(WORDS);
+  const used = new Set([w[1][0]]);
+  const three = [w];
+  for (const x of shuffle(WORDS)) { if (three.length >= 3) break; if (!used.has(x[1][0])) { used.add(x[1][0]); three.push(x); } }
+  return { vis: `<span class="big">${w[0]}</span>`, text: `「${w[1]}」の さいしょの もじは？`,
+           say: `${w[1]}。 さいしょの もじは なにかな？`,
+           choices: three.map(x => ({ label: x[1][0], say: x[1][0], correct: x === w })), ansSay: w[1][0] };
+}
+
+/* ================= おんせい ================= */
+let jaVoice = null;
+function loadVoice() {
+  if (!window.speechSynthesis) return;
+  jaVoice = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)) || null;
+}
+if (window.speechSynthesis) { loadVoice(); speechSynthesis.onvoiceschanged = loadVoice; }
+function say(t) {
+  if (!window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'ja-JP'; u.rate = 0.85; u.pitch = 1.15;
+    if (jaVoice) u.voice = jaVoice;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* ================= 3D ================= */
+const LANES = [-6, 0, 6];
+const BOARD_COLORS = ['#ef5350', '#42a5f5', '#ffa000'];
+const CAR_COLORS = ['#e53935','#1e88e5','#fdd835','#43a047','#8e24aa','#fb8c00','#ec407a','#00acc1'];
+const SPEED = 14, SPAWN_Z = -130, LOOP = 250;
+
+const wrap = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+wrap.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const SKY = 0x87ceeb;
+scene.background = new THREE.Color(SKY);
+scene.fog = new THREE.Fog(SKY, 70, 210);
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x88aa66, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(20, 40, 10); scene.add(sun);
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.fov = w / h < 1 ? 75 : 60;   // たて画面は広めに
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize); resize();
+
+// じめん・どうろ
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: 0x7cc576 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; scene.add(ground);
+const road = new THREE.Mesh(new THREE.PlaneGeometry(20, 600), new THREE.MeshLambertMaterial({ color: 0x54595f }));
+road.rotation.x = -Math.PI / 2; scene.add(road);
+for (const x of [-10, 10]) {
+  const edge = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 600), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  edge.rotation.x = -Math.PI / 2; edge.position.set(x, 0.01, 0); scene.add(edge);
+}
+
+const scroller = [];   // うしろに ながれる もの
+function addScroll(obj, z) { obj.position.z = z; scene.add(obj); scroller.push(obj); }
+
+// ちゅうおうせん
+for (const x of [-3, 3]) for (let i = 0; i < LOOP / 8; i++) {
+  const d = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  d.rotation.x = -Math.PI / 2; d.position.set(x, 0.01, 0); addScroll(d, 25 - i * 8);
+}
+
+// きと おうち
+function makeTree() {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 2, 8), new THREE.MeshLambertMaterial({ color: 0x8d6e63 }));
+  trunk.position.y = 1; g.add(trunk);
+  const leaf = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5, 8), new THREE.MeshLambertMaterial({ color: pick([0x2e7d32, 0x388e3c, 0x43a047]) }));
+  leaf.position.y = 4.2; g.add(leaf);
+  return g;
+}
+function makeHouse() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshLambertMaterial({ color: pick([0xfff3e0, 0xffe0b2, 0xe1f5fe, 0xf8bbd0]) }));
+  body.position.y = 2; g.add(body);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 4), new THREE.MeshLambertMaterial({ color: pick([0xd84315, 0x1565c0, 0x6a1b9a]) }));
+  roof.position.y = 5.5; roof.rotation.y = Math.PI / 4; g.add(roof);
+  return g;
+}
+function makeCloud() {
+  const g = new THREE.Group();
+  const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9 });
+  for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(rnd(4, 7), 10, 8), m); s.position.set(i * 5 - 7, rnd(-1, 1), rnd(-2, 2)); g.add(s); }
+  return g;
+}
+for (let i = 0; i < 60; i++) {
+  const side = i % 2 ? 1 : -1;
+  const o = Math.random() < 0.28 ? makeHouse() : makeTree();
+  o.position.x = side * rnd(14, 40);
+  addScroll(o, 25 - (i / 60) * LOOP + rnd(-3, 3));
+}
+for (let i = 0; i < 8; i++) {
+  const c = makeCloud(); c.position.set(rnd(-90, 90), rnd(35, 55), 0); addScroll(c, 25 - (i / 8) * LOOP);
+}
+
+// くるま
+const car = new THREE.Group();
+const bodyMat = new THREE.MeshLambertMaterial({ color: CAR_COLORS[0] });
+const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 4.6), bodyMat); body.position.y = 0.9; car.add(body);
+const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 2.2), bodyMat); cabin.position.set(0, 1.7, 0.3); car.add(cabin);
+const glass = new THREE.MeshLambertMaterial({ color: 0xb3e5fc });
+const win = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.5, 1.8), glass); win.position.set(0, 1.75, 0.3); car.add(win);
+const roofTop = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.12, 2.3), bodyMat); roofTop.position.set(0, 2.15, 0.3); car.add(roofTop);
+for (const x of [-0.8, 0.8]) {
+  const l = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.1), new THREE.MeshBasicMaterial({ color: 0xfff59d })); l.position.set(x, 1.0, -2.32); car.add(l);
+  const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.1), new THREE.MeshBasicMaterial({ color: 0xff1744 })); t.position.set(x, 1.0, 2.32); car.add(t);
+}
+const wheels = [];
+const wGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.4, 16); wGeo.rotateZ(Math.PI / 2);
+for (const [x, z] of [[-1.25, -1.5], [1.25, -1.5], [-1.25, 1.5], [1.25, 1.5]]) {
+  const w = new THREE.Group();
+  const tire = new THREE.Mesh(wGeo, new THREE.MeshLambertMaterial({ color: 0x212121 }));
+  const hub = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
+  w.add(tire, hub); w.position.set(x, 0.55, z); car.add(w); wheels.push(w);
+}
+scene.add(car);
+
+// ゲート
+function makeBoardTexture(label, color) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 360;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; roundRect(g, 0, 0, 512, 360, 50); g.fill();
+  g.fillStyle = color; roundRect(g, 14, 14, 484, 332, 40); g.fill();
+  const n = [...label].length;
+  const size = n <= 2 ? 240 : n === 3 ? 160 : n === 4 ? 120 : 96;
+  g.fillStyle = '#fff'; g.font = `bold ${size}px "Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 12; g.strokeStyle = 'rgba(0,0,0,.25)'; g.strokeText(label, 256, 190); g.fillText(label, 256, 190);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4; return tex;
+}
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+const postMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+function makeGate(choice, laneIdx) {
+  const g = new THREE.Group();
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.5), new THREE.MeshBasicMaterial({ map: makeBoardTexture(choice.label, BOARD_COLORS[laneIdx]) }));
+  board.position.y = 4.2; g.add(board);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(5.7, 4.2), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
+  glow.position.set(0, 4.2, -0.05); glow.visible = false; g.add(glow);
+  for (const x of [-2.2, 2.2]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4.6, 8), postMat); p.position.set(x, 2.3, 0); g.add(p);
+  }
+  g.position.x = LANES[laneIdx];
+  g.userData = { choice, glow, board };
+  return g;
+}
+function disposeWave(w) {
+  w.traverse(o => { if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose && o.material !== postMat && o.material.dispose(); } if (o.geometry) o.geometry.dispose(); });
+  scene.remove(w);
+}
+
+/* ================= ゲームじょうたい ================= */
+const $ = id => document.getElementById(id);
+let mode = null, playing = false, paused = false;
+let q = null, wrongCount = 0, waves = [], current = null, delay = -1, delayFn = null, carX = 0, steer = 0, clock = 0;
+let stars = 0;
+try { stars = parseInt(localStorage.getItem('driveGakushu.stars') || '0', 10) || 0; } catch (e) {}
+
+function renderStars() { $('stars').textContent = '⭐ ' + stars; $('menuStars').textContent = '⭐ ' + stars; }
+function applyCarColor() { bodyMat.color.set(CAR_COLORS[Math.floor(stars / 5) % CAR_COLORS.length]); }
+renderStars(); applyCarColor();
+
+function showMsg(text, color) {
+  const m = $('msg'); m.textContent = text; m.style.color = color || '#fff';
+  m.classList.remove('show'); void m.offsetWidth; m.classList.add('show');
+}
+function burst(emojis, n) {
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div'); s.className = 'fx'; s.textContent = pick(emojis);
+    s.style.left = (30 + Math.random() * 40) + '%'; s.style.top = (40 + Math.random() * 20) + '%';
+    s.style.setProperty('--dx', (Math.random() * 600 - 300) + 'px'); s.style.setProperty('--dy', (-100 - Math.random() * 350) + 'px');
+    document.body.appendChild(s); setTimeout(() => s.remove(), 1500);
+  }
+}
+
+function showQuestion() {
+  $('qvis').innerHTML = q.vis; $('qtext').textContent = q.text;
+}
+function spawnWave(hint) {
+  const order = shuffle(q.choices);
+  const wave = new THREE.Group();
+  order.forEach((c, i) => { const g = makeGate(c, i); if (hint && c.correct) g.userData.glow.visible = true; wave.add(g); });
+  wave.position.z = SPAWN_Z;
+  wave.userData = { gates: wave.children.slice(), judged: false };
+  scene.add(wave); waves.push(wave); current = wave;
+}
+function newQuestion() {
+  q = makeQuestion(mode); wrongCount = 0;
+  showQuestion(); spawnWave(false); say(q.say);
+}
+function after(sec, fn) { delay = sec; delayFn = fn; }
+
+function judge(wave) {
+  wave.userData.judged = true;
+  let idx = 0, best = 1e9;
+  LANES.forEach((x, i) => { const d = Math.abs(carX - x); if (d < best) { best = d; idx = i; } });
+  const g = wave.userData.gates[idx];
+  if (g.userData.choice.correct) {
+    sessionCorrect++; stars++;
+    try { localStorage.setItem('driveGakushu.stars', String(stars)); } catch (e) {}
+    renderStars();
+    const colorChanged = stars % 5 === 0;
+    if (colorChanged) applyCarColor();
+    showMsg(pick(['せいかい！', 'すごい！', 'やったね！', 'ばっちり！']), '#fff59d');
+    burst(['⭐', '🎉', '✨', '🌟'], colorChanged ? 36 : 16);
+    say(`せいかい！ こたえは ${q.ansSay}`);
+    if (colorChanged) setTimeout(() => showMsg('くるまの いろが かわった！', '#ffffff'), 1700);
+    after(colorChanged ? 4.2 : 3.2, newQuestion);
+  } else {
+    wrongCount++;
+    showMsg('おしい！ もういちど', '#ffcc80');
+    say('おしい！ もういちど やってみよう');
+    after(2.6, () => { spawnWave(wrongCount >= 2); say(q.say); });
+  }
+}
+
+function startMode(m) {
+  mode = m; sessionCorrect = 0; playing = true; paused = false;
+  waves.forEach(disposeWave); waves = []; current = null; delay = -1; carX = 0;
+  $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); $('pausedLabel').classList.add('hidden');
+  $('pause').textContent = '⏸';
+  newQuestion();
+}
+function goMenu() {
+  playing = false; if (window.speechSynthesis) speechSynthesis.cancel();
+  waves.forEach(disposeWave); waves = []; current = null; delay = -1;
+  $('hud').classList.add('hidden'); $('menu').classList.remove('hidden'); renderStars();
+}
+
+/* ================= そうさ ================= */
+document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => startMode(b.dataset.mode)));
+$('homeBtn').addEventListener('click', goMenu);
+$('speakBtn').addEventListener('click', () => q && say(q.say));
+$('pause').addEventListener('click', () => {
+  paused = !paused; $('pausedLabel').classList.toggle('hidden', !paused); $('pause').textContent = paused ? '▶' : '⏸';
+});
+const keys = {};
+function holdBtn(id, dir) {
+  const el = $(id);
+  const on = e => { e.preventDefault(); keys[id] = dir; el.classList.add('on'); };
+  const off = e => { e.preventDefault(); delete keys[id]; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', on);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, off));
+}
+holdBtn('left', -1); holdBtn('right', 1);
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.kl = -1;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.kr = 1;
+  if (e.key === ' ') { e.preventDefault(); $('pause').click(); }
+});
+window.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') delete keys.kl;
+  if (e.key === 'ArrowRight' || e.key === 'd') delete keys.kr;
+});
+
+/* ================= ループ ================= */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  if (playing && !paused) {
+    clock += dt;
+    steer = (keys.left || 0) + (keys.right || 0) + (keys.kl || 0) + (keys.kr || 0);
+    carX = Math.max(-8.5, Math.min(8.5, carX + Math.sign(steer) * 10 * dt));
+    const dz = SPEED * dt;
+    for (const o of scroller) { o.position.z += dz; if (o.position.z > 30) o.position.z -= LOOP; }
+    for (let i = waves.length - 1; i >= 0; i--) {
+      const w = waves[i]; w.position.z += dz;
+      if (!w.userData.judged && w.position.z > 0.5) judge(w);
+      if (w.position.z > 6) w.visible = false;   // 画面をふさがないように
+      if (w.position.z > 25) { disposeWave(w); waves.splice(i, 1); }
+      else w.userData.gates.forEach(g => { if (g.userData.glow.visible) { const s = 1 + 0.06 * Math.sin(clock * 8); g.userData.board.scale.setScalar(s); } });
+    }
+    wheels.forEach(w => w.rotation.x -= dz / 0.55);
+    if (delay >= 0) { delay -= dt; if (delay < 0 && delayFn) { const f = delayFn; delayFn = null; f(); } }
+  }
+  // くるまの ひょうじ（メニュー中もゆっくり）
+  const targetTilt = playing ? -Math.sign(steer) * 0.12 : 0;
+  car.rotation.y += (targetTilt - car.rotation.y) * 0.15;
+  car.position.x += ((playing ? carX : 0) - car.position.x) * 0.3;
+  car.position.y = playing && !paused ? Math.sin(clock * 20) * 0.02 : 0;
+  camera.position.set(car.position.x * 0.6, 5.2, 10);
+  camera.lookAt(car.position.x * 0.4, 2.2, -14);
+  if (!playing) { // メニュー背景でもまわす
+    clock += dt; for (const o of scroller) { o.position.z += SPEED * 0.5 * dt; if (o.position.z > 30) o.position.z -= LOOP; }
+    wheels.forEach(w => w.rotation.x -= SPEED * 0.5 * dt / 0.55);
+  }
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
