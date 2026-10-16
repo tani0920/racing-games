@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>ドライブがくしゅう</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
@@ -55,6 +55,8 @@
   .mode small { display: block; font-size: .5em; font-weight: normal; opacity: .95; }
   #menuStars { font-size: 26px; font-weight: bold; color: #f57f17; background: #fff; border-radius: 30px; padding: 4px 20px; }
 </style>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
 </head>
 <body>
 <div id="game"></div>
@@ -454,6 +456,14 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 })();
+</script>
+<script>
+/* iPad: 拡大・ダブルタップ・長押しメニューなどのブラウザ動作を止める */
+(function(){var o={passive:false},p=function(e){e.preventDefault()};
+['gesturestart','gesturechange','gestureend','dblclick','contextmenu','selectstart','dragstart'].forEach(function(t){document.addEventListener(t,p,o)});
+document.addEventListener('touchmove',p,o);
+var last=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-last<350)e.preventDefault();last=n},o);
+document.addEventListener('touchstart',function(e){if(e.touches.length>1)e.preventDefault()},o);})();
 </script>
 </body>
 </html>
