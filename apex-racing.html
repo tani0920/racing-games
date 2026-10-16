@@ -755,7 +755,9 @@ $('go').addEventListener('click', async () => {
   if (steerMode === 'tilt') setTimeout(() => { if (!tiltHas) { showMsg('傾きセンサーが使えません', '#ff8a80'); steerMode = 'btn'; applyTiltUI(); } }, 1500);
 });
 $('again').addEventListener('click', startRace);
-function applyTiltUI() { const t = steerMode === 'tilt'; $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
+function applyTiltUI() { const t = steerMode === 'tilt';
+  const gl = $('tL').parentNode, gr = $('tGas').parentNode;
+  if (t) { gl.appendChild($('tHB')); gl.appendChild($('tBrk')); } else { gr.insertBefore($('tHB'), $('tGas')); gr.insertBefore($('tBrk'), $('tGas')); } $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
 $('tiltBtn').addEventListener('click', () => { tiltZero = tiltRoll; showMsg('センター合わせ', '#80deea'); });
 $('tiltInvBtn').addEventListener('click', () => { tiltInv = !tiltInv; try { localStorage.setItem('apex.tiltInv', tiltInv ? '1' : '0'); } catch (e) {} showMsg(tiltInv ? '傾き: 反転' : '傾き: 標準', '#80deea'); });
 function toMenu() { state = 'menu'; bgmStop(); if (ac) { engG.gain.value = 0; tireG.gain.value = 0; } if (player) { scene.remove(player.car.root); player = null; } ais.forEach(a => scene.remove(a.car.root)); ais = []; $('hud').classList.add('hidden'); $('result').classList.add('hidden'); $('menu').classList.remove('hidden'); $('msg').classList.remove('sticky'); $('msg').style.opacity = 0; renderBest(); }
