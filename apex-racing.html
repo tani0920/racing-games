@@ -76,7 +76,7 @@
 <div id="hud" class="hidden">
   <div id="pos" class="panel it"><div class="big"><span id="posN">1</span><small>/<span id="posT">6</span></small></div><div class="lap">LAP <span id="lapN">1</span>/<span id="lapT">3</span></div></div>
   <div id="times" class="panel"><div class="cur it" id="tCur">0:00.00</div><div class="sub">LAST <span id="tLast">--</span> ／ BEST <span id="tBest">--</span></div></div>
-  <div id="sys"><button class="rb" id="bgmBtn" title="BGM(M)">🎵</button><button class="rb" id="camBtn" title="カメラ(C)">🎥</button><button class="rb" id="pauseBtn" title="ポーズ(P)">⏸</button><button class="rb" id="homeBtn" title="メニュー">✕</button></div>
+  <div id="sys"><button class="rb hidden" id="tiltBtn" title="センター合わせ">🧭</button><button class="rb hidden" id="tiltInvBtn" title="傾きの向きを反転">🔄</button><button class="rb" id="bgmBtn" title="BGM(M)">🎵</button><button class="rb" id="camBtn" title="カメラ(C)">🎥</button><button class="rb" id="pauseBtn" title="ポーズ(P)">⏸</button><button class="rb" id="homeBtn" title="メニュー">✕</button></div>
   <div id="miniWrap" class="panel"><canvas id="mini" width="340" height="340"></canvas></div>
   <div id="drift" class="panel"><div class="t">DRIFT BOOST</div><div id="driftBar"><div id="driftFill"></div></div><div class="it" id="driftScore">0</div></div>
   <div id="speedo" class="panel it"><span id="gear">N</span><span id="kmh">0</span><span class="u">km/h</span><div id="rpm"><div id="rpmBar"></div></div></div>
@@ -105,8 +105,9 @@
   <div class="row" id="laps">
     <button class="opt sel" data-laps="3">3 周</button><button class="opt" data-laps="5">5 周</button><button class="opt" data-laps="1">1 周</button>
   </div>
+  <div class="row" id="steerRow"><button class="opt sel" data-steer="btn">ボタンでハンドル</button><button class="opt" data-steer="tilt">傾きでハンドル<small>iPad・スマホを傾ける</small></button></div>
   <button id="go" class="it">START</button>
-  <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
+  <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
 </div>
 
 <div id="result" class="hidden">
@@ -413,7 +414,7 @@ function startRace() {
   raceT = 0; lapStartT = 0; lapTimes = []; finished = false; finishRank = 0; paused = false; driftTotal = 0; wrongT = 0; camInit = false; lastLapShown = 0;
   state = 'countdown'; countdown = 3.99; lastBeep = 4; bgmStart(); $('bgmBtn').style.opacity = bgmOn ? 1 : .4;
   $('menu').classList.add('hidden'); $('result').classList.add('hidden'); $('hud').classList.remove('hidden'); $('pause').classList.add('hidden');
-  $('touch').classList.toggle('hidden', !matchMedia('(pointer: coarse)').matches);
+  $('touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || steerMode === 'tilt')); applyTiltUI();
   $('posT').textContent = ais.length + 1; $('lapT').textContent = lapsTotal; $('posN').textContent = selMode === 'race' ? 3 : 1;
   $('tBest').textContent = bestLap ? fmt(bestLap) : '--'; $('tLast').textContent = '--';
 }
@@ -577,6 +578,7 @@ function readInput() {
   let sx = keys.r - keys.l + tch.r - tch.l, gas = keys.gas || tch.gas, brk = keys.brk || tch.brk, hb = keys.hb || tch.hb;
   const gp = navigator.getGamepads && navigator.getGamepads()[0];
   if (gp) { const ax = gp.axes[0] || 0; if (Math.abs(ax) > .12) sx += ax; const rt = gp.buttons[7] ? gp.buttons[7].value : 0, lt = gp.buttons[6] ? gp.buttons[6].value : 0; gas = Math.max(gas, rt || (gp.buttons[0] && gp.buttons[0].pressed ? 0 : 0)); brk = Math.max(brk, lt); if (gp.buttons[0] && gp.buttons[0].pressed) hb = 1; if (gp.buttons[2] && gp.buttons[2].pressed) hb = 1; }
+  if (steerMode === 'tilt' && tiltHas) { const d = tiltRoll - tiltZero, dz = Math.abs(d) < 2.5 ? 0 : d - Math.sign(d) * 2.5; sx += clamp(-dz / 28, -1, 1) * (tiltInv ? -1 : 1); }
   return { steer: clamp(sx, -1, 1), thr: gas ? 1 : 0, brk: brk ? Math.max(brk, 1 * (brk === 1)) : 0, hb: hb ? 1 : 0 };
 }
 let acc = 0, last = performance.now(), clockT = 0;
@@ -593,7 +595,7 @@ function simulate(dt) {
   if (state === 'countdown') {
     countdown -= dt; const sec = Math.ceil(countdown);
     if (sec !== lastBeep && sec >= 1 && sec <= 3) { lastBeep = sec; showMsg(String(sec), '#ffca28'); tone(520, .2, 'square', .09); }
-    if (countdown <= 0) { state = 'racing'; raceT = 0; lapStartT = 0; showMsg('GO!', '#69f0ae'); tone(1040, .5, 'square', .1); }
+    if (countdown <= 0) { state = 'racing'; raceT = 0; lapStartT = 0; tiltZero = tiltRoll; showMsg('GO!', '#69f0ae'); tone(1040, .5, 'square', .1); }
     ais.forEach(a => updateAI(a, dt)); track(player); return;
   }
   raceT += dt;
@@ -726,20 +728,43 @@ function menuCam(rdt) {
 let menuCar = null;
 function refreshMenuCar() { if (menuCar) { scene.remove(menuCar.root); menuCar = null; } }
 
+/* =============== 傾きハンドル =============== */
+let steerMode = 'btn', tiltHas = false, tiltRoll = 0, tiltZero = 0, tiltInv = false;
+try { tiltInv = localStorage.getItem('apex.tiltInv') === '1'; } catch (e) {}
+function screenAngle() { const a = typeof window.orientation === 'number' ? window.orientation : (screen.orientation ? -screen.orientation.angle : 0); return ((a % 360) + 360) % 360; }
+addEventListener('deviceorientation', e => {
+  if (e.beta == null || e.gamma == null) return; tiltHas = true;
+  const b = e.beta * Math.PI / 180, g = e.gamma * Math.PI / 180, ang = screenAngle(); let up;
+  if (ang === 0) up = -Math.sin(g) * Math.cos(b); else if (ang === 90) up = -Math.sin(b); else if (ang === 270) up = Math.sin(b); else up = Math.sin(g) * Math.cos(b);
+  tiltRoll = Math.asin(clamp(up, -1, 1)) * 57.2958;
+});
+addEventListener('orientationchange', () => setTimeout(() => { tiltZero = tiltRoll; }, 400));
+async function enableTilt() {
+  try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) { const r = await DeviceOrientationEvent.requestPermission(); return r === 'granted'; } return true; } catch (e) { return false; }
+}
+
 /* =============== UI =============== */
 { const row = $('colors'); CAR_COLORS.forEach((c, i) => { const b = document.createElement('div'); b.className = 'sw' + (i === 0 ? ' sel' : ''); b.style.background = c; b.addEventListener('click', () => { selColor = i; row.querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === i)); refreshMenuCar(); }); row.appendChild(b); }); }
 function bindGroup(id, attr, fn) { $(id).querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { $(id).querySelectorAll('.opt').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); fn(b.dataset[attr]); })); }
-bindGroup('cars', 'car', v => { selCar = +v; refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('laps', 'laps', v => selLaps = +v);
+bindGroup('steerRow', 'steer', v => steerMode = v); bindGroup('cars', 'car', v => { selCar = +v; refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('laps', 'laps', v => selLaps = +v);
 function renderBest() { $('best').textContent = bestLap ? '🏆 ベストラップ ' + fmt(bestLap) : ''; } renderBest();
-$('go').addEventListener('click', () => { if (menuCar) { scene.remove(menuCar.root); menuCar = null; } startRace(); });
+$('go').addEventListener('click', async () => {
+  audioInit(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
+  if (steerMode === 'tilt') { const ok = await enableTilt(); if (!ok) { steerMode = 'btn'; } }
+  startRace();
+  if (steerMode === 'tilt') setTimeout(() => { if (!tiltHas) { showMsg('傾きセンサーが使えません', '#ff8a80'); steerMode = 'btn'; applyTiltUI(); } }, 1500);
+});
 $('again').addEventListener('click', startRace);
+function applyTiltUI() { const t = steerMode === 'tilt'; $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
+$('tiltBtn').addEventListener('click', () => { tiltZero = tiltRoll; showMsg('センター合わせ', '#80deea'); });
+$('tiltInvBtn').addEventListener('click', () => { tiltInv = !tiltInv; try { localStorage.setItem('apex.tiltInv', tiltInv ? '1' : '0'); } catch (e) {} showMsg(tiltInv ? '傾き: 反転' : '傾き: 標準', '#80deea'); });
 function toMenu() { state = 'menu'; bgmStop(); if (ac) { engG.gain.value = 0; tireG.gain.value = 0; } if (player) { scene.remove(player.car.root); player = null; } ais.forEach(a => scene.remove(a.car.root)); ais = []; $('hud').classList.add('hidden'); $('result').classList.add('hidden'); $('menu').classList.remove('hidden'); $('msg').classList.remove('sticky'); $('msg').style.opacity = 0; renderBest(); }
 $('toMenu').addEventListener('click', toMenu); $('homeBtn').addEventListener('click', toMenu);
 function togglePause() { if (state !== 'racing' && state !== 'countdown') return; paused = !paused; $('pause').classList.toggle('hidden', !paused); bgmLevel(paused ? .04 : .16); }
 $('pauseBtn').addEventListener('click', togglePause);
 function cycleCam() { camMode = (camMode + 1) % 3; }
 $('camBtn').addEventListener('click', cycleCam); $('bgmBtn').addEventListener('click', toggleBgm);
-function respawn() { if (!player || state !== 'racing') return; const t = trackAt(player.cumF); player.x = t.x; player.z = t.z; player.h = Math.atan2(t.tx, t.tz); player.vx = player.vz = 0; player.loose = 0; player.steer = 0; camInit = false; }
+function respawn() { if (!player || state !== 'racing') return; tiltZero = tiltRoll; const t = trackAt(player.cumF); player.x = t.x; player.z = t.z; player.h = Math.atan2(t.tx, t.tz); player.vx = player.vz = 0; player.loose = 0; player.steer = 0; camInit = false; }
 function hold(id, k) { const el = $(id), on = e => { e.preventDefault(); tch[k] = 1; el.classList.add('on'); audioInit(); }, off = e => { e.preventDefault(); tch[k] = 0; el.classList.remove('on'); }; el.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, off)); }
 hold('tL', 'l'); hold('tR', 'r'); hold('tGas', 'gas'); hold('tBrk', 'brk'); hold('tHB', 'hb');
 const KM = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'gas', w: 'gas', W: 'gas', ArrowDown: 'brk', s: 'brk', S: 'brk', ' ': 'hb' };
