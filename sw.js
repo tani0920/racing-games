@@ -1,5 +1,5 @@
 // APEX RACING：ホーム画面アプリ用。一度ひらけば電波がなくても遊べるようにする
-const CACHE = 'apex-v3';
+const CACHE = 'apex-v4';
 const CORE = ['./apex-racing.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

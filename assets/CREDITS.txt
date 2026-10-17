@@ -5,3 +5,7 @@
 ゲーム用に縮小・圧縮しています。
 
 - 車（GTクーペ）: ChatGPTで描いた絵を TRELLIS（MITライセンス）で3D化したもの
+
+ビルの外壁・ガードレールの金属: ambientCG（https://ambientcg.com）の CC0 素材
+- Facade 001 / 013 / 018 B / 019 A / 020 A（ビル）, Metal 032（ガードレール。写真から板の形に作成）
+- 市街地のコンクリート壁は Poly Haven の Concrete Floor 02 にペンキ塗りの色を重ねたもの

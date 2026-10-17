@@ -192,7 +192,7 @@
   <div class="row" id="steerRow"><button class="opt sel" data-steer="btn">ボタンでハンドル</button><button class="opt" data-steer="tilt">傾きでハンドル<small>iPad・スマホを傾ける</small></button></div>
   <button id="go" class="it">START</button>
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
-  <div style="text-align:center;line-height:1.4"><span style="font-size:11px;color:#78909c">車の3Dモデル: Daniel Zhabotinsky, Dahie — Sketchfab (CC-BY 4.0) ／ 景色・木: Poly Haven (CC0)</span></div>
+  <div style="text-align:center;line-height:1.4"><span style="font-size:11px;color:#78909c">車の3Dモデル: Daniel Zhabotinsky, Dahie — Sketchfab (CC-BY 4.0) ／ 景色・木: Poly Haven, ビル・ガードレール: ambientCG (CC0)</span></div>
 </div>
 
 <div id="tiltDlg" class="hidden"><div class="panel" style="padding:18px 20px;max-width:440px;text-align:center;line-height:1.7">
@@ -511,6 +511,23 @@ function cityWinTex(k) {
   }, true);
   return winTexs[k];
 }
+// きれい画質のビル：写真の外壁（ambientCG, CC0）。t = 写真1枚が何mぶんか
+const FACADES = [{ f: 'fac_glass', t: 14, metal: .7, rough: .15 }, { f: 'fac_brick', t: 20, em: 1 }, { f: 'fac_concrete', t: 14 }, { f: 'fac_brick2', t: 14 }];
+const FAC_FAR = { f: 'fac_far', t: 60, em: 1 };
+function facadeMats(F) {
+  if (!F.mats) {
+    const side = new THREE.MeshStandardMaterial({ map: photo(F.f + '.jpg', true, 1, 1), roughness: F.rough || .8, metalness: F.metal || 0 });
+    if (F.em) { side.emissiveMap = photo(F.f + '_em.jpg', true, 1, 1); side.emissive.set(0xffffff); side.emissiveIntensity = .9; }
+    const roof = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, map: photo('concrete_diff.jpg', true, 1, 1), roughness: .95 });
+    F.mats = [side, side, roof, roof, side, side];   // BoxGeometry の面の順：+x -x 上 下 +z -z
+  }
+  return F.mats;
+}
+// 箱の各面のUVを「m ÷ 写真1枚のm」にする（窓の大きさが どのビルでも同じになる）
+function boxUV(geo, w, h, d, t) {
+  const uv = geo.attributes.uv, S = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const i = f * 4 + k; uv.setXY(i, uv.getX(i) * S[f][0] / t, uv.getY(i) * S[f][1] / t); }
+}
 function buildCity(near, BX, BZ, BR, m4) {
   const mats = [0, 1, 2, 3].map(k => new THREE.MeshStandardMaterial({ map: cityWinTex(k), emissiveMap: cityWinTex(k), emissive: 0xffffff, emissiveIntensity: .75, roughness: .7 }));
   let made = 0, tries = 0;
@@ -518,12 +535,14 @@ function buildCity(near, BX, BZ, BR, m4) {
     const a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * (BR + 150), x = BX + Math.cos(a) * r, z = BZ + Math.sin(a) * r, w = rnd(14, 34), d = rnd(14, 34);
     if (near(x, z) < WALL_D + 8 + Math.max(w, d) * .75) continue;
     const far = Math.min(1, near(x, z) / 300), h = rnd(14, 40) + far * rnd(20, 80);
-    const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 12, uv.getY(i) * h / 12);
-    const m = new THREE.Mesh(geo, pick(mats)); m.position.set(x, h / 2, z); m.rotation.y = rnd(-.2, .2); m.castShadow = !LOW && h < 50; m.receiveShadow = true; courseGroup.add(m); made++;
+    const geo = new THREE.BoxGeometry(w, h, d), F = pick(FACADES), uv = geo.attributes.uv;
+    if (HQ) boxUV(geo, w, h, d, F.t); else for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 12, uv.getY(i) * h / 12);
+    const m = new THREE.Mesh(geo, HQ ? facadeMats(F) : pick(mats)); m.position.set(x, h / 2, z); m.rotation.y = rnd(-.2, .2); m.castShadow = !LOW && h < 50; m.receiveShadow = true; courseGroup.add(m); made++;
   }
   // スカイライン（遠くのビル群）
-  for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283, h = rnd(60, 180), w = rnd(40, 90), geo = new THREE.BoxGeometry(w, h, w), uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 14, uv.getY(k) * h / 14);
-    const m = new THREE.Mesh(geo, pick(mats)); m.position.set(BX + Math.cos(a) * (BR + 380), h / 2, BZ + Math.sin(a) * (BR + 300)); courseGroup.add(m); }
+  for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283, h = rnd(60, 180), w = rnd(40, 90), geo = new THREE.BoxGeometry(w, h, w), uv = geo.attributes.uv, F = i % 3 ? pick(FACADES) : FAC_FAR;
+    if (HQ) boxUV(geo, w, h, w, F.t); else for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 14, uv.getY(k) * h / 14);
+    const m = new THREE.Mesh(geo, HQ ? facadeMats(F) : pick(mats)); m.position.set(BX + Math.cos(a) * (BR + 380), h / 2, BZ + Math.sin(a) * (BR + 300)); courseGroup.add(m); }
   // 街灯
   const cnt = Math.floor(N / 10) * 2, pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(.15, .2, 8, 6), flatOf(0x3a3e48, .5), cnt), lamp = new THREE.InstancedMesh(new THREE.SphereGeometry(.6, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffe2a8, emissive: 0xffd27a, emissiveIntensity: 2 }), cnt);
   let li = 0; for (let i = 0; i < N; i += 10) for (const s of [-1, 1]) { const x = TR.x[i] + TR.nx[i] * s * (WALL_D + 1.5), z = TR.z[i] + TR.nz[i] * s * (WALL_D + 1.5); m4.makeTranslation(x, 4, z); pole.setMatrixAt(li, m4); m4.makeTranslation(x, 8.2, z); lamp.setMatrixAt(li++, m4); }
@@ -567,10 +586,14 @@ function buildCourse() {
   makeStrip(i => off(i, hw + 1.6, .05), i => off(i, hw, .05), 3, curbMat, i => tight(i));
   makeStrip(i => off(i, -hw, .05), i => off(i, -hw - 1.6, .05), 3, curbMat, i => tight(i));
   // かべ
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: .6, side: THREE.DoubleSide });
+  // きれい画質：森・海＝鉄のガードレール（写真）、市街地＝ペンキぬりのコンクリート壁（写真）。1枚 = 4m
+  const cityWall = THEME.scenery === 'city', rail = HQ && !cityWall;
+  const wallMat = !HQ ? new THREE.MeshStandardMaterial({ map: wallTex, roughness: .6, side: THREE.DoubleSide })
+    : rail ? new THREE.MeshStandardMaterial({ map: photo('guardrail.png', true, 1, 1), alphaTest: .5, side: THREE.DoubleSide, metalness: .35, roughness: .4 })
+    : new THREE.MeshStandardMaterial({ map: photo('barrier_city.jpg', true, 1, 1), roughness: .85, side: THREE.DoubleSide });
   for (const s of [1, -1]) {
-  makeStrip(i => off(i, s * WALL_D, 0), i => off(i, s * WALL_D, 1.15), 8, wallMat);
-  makeStrip(i => off(i, s * WALL_D, 1.15), i => off(i, s * (WALL_D + .5), 1.15), 8, new THREE.MeshStandardMaterial({ color: 0xcfd2d8, roughness: .5 }));
+  makeStrip(i => off(i, s * WALL_D, 0), i => off(i, s * WALL_D, 1.15), HQ ? 4 : 8, wallMat);
+  if (!rail) makeStrip(i => off(i, s * WALL_D, 1.15), i => off(i, s * (WALL_D + .5), 1.15), 8, HQ ? hqStripMat('concrete', .5, 8) : new THREE.MeshStandardMaterial({ color: 0xcfd2d8, roughness: .5 }));
   }
   {
   const s0 = trackAt(0), ang = Math.atan2(s0.tx, s0.tz);
