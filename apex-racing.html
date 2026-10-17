@@ -1112,14 +1112,22 @@ function refreshMenuCar() { if (menuCar) { scene.remove(menuCar.root); menuCar =
 /* =============== 傾きハンドル =============== */
 let steerMode = 'btn', tiltHas = false, tiltRoll = 0, tiltZero = 0, tiltInv = false;
 try { tiltInv = localStorage.getItem('apex.tiltInv') === '1'; } catch (e) {}
-function screenAngle() { const a = typeof window.orientation === 'number' ? window.orientation : (screen.orientation ? -screen.orientation.angle : 0); return ((a % 360) + 360) % 360; }
+// 画面の向きは、ブラウザの向き情報（Safariとホーム画面アプリで違う）に頼らず、
+// 画面のたて横＋重力がどちらに向いているかで決める
+let landSide = 90;
+function screenAngleFrom(b, g) {
+  const xUp = -Math.sin(g) * Math.cos(b), yUp = Math.sin(b);
+  if (innerWidth > innerHeight) { if (xUp > .25) landSide = 90; else if (xUp < -.25) landSide = 270; return landSide; }
+  return yUp >= -.25 ? 0 : 180;
+}
 addEventListener('deviceorientation', e => {
   if (e.beta == null || e.gamma == null) return; tiltHas = true;
-  const b = e.beta * Math.PI / 180, g = e.gamma * Math.PI / 180, ang = screenAngle(); let up;
+  const b = e.beta * Math.PI / 180, g = e.gamma * Math.PI / 180, ang = screenAngleFrom(b, g); let up;
   if (ang === 0) up = -Math.sin(g) * Math.cos(b); else if (ang === 90) up = -Math.sin(b); else if (ang === 270) up = Math.sin(b); else up = Math.sin(g) * Math.cos(b);
   tiltRoll = Math.asin(clamp(up, -1, 1)) * 57.2958;
 });
 addEventListener('orientationchange', () => setTimeout(() => { tiltZero = tiltRoll; }, 400));
+addEventListener('resize', () => setTimeout(() => { tiltZero = tiltRoll; }, 400));
 async function enableTilt() {
   try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) { const r = await DeviceOrientationEvent.requestPermission(); return r === 'granted'; } return true; } catch (e) { return false; }
 }
