@@ -123,6 +123,10 @@
     <button class="opt sel" data-car="0">GT クーペ<small>バランス型</small></button>
     <button class="opt" data-car="1">スーパーカー<small>最高速・高グリップ</small></button>
     <button class="opt" data-car="2">ラリー<small>ドリフトしやすい</small></button>
+    <button class="opt" data-car="3">GTマシン<small>GT500風・大きなウイング</small></button>
+    <button class="opt" data-car="4">フォーミュラ<small>F1風・いちばん速い</small></button>
+    <button class="opt" data-car="5">ツーリングカー<small>TCR風・ハッチバック</small></button>
+    <button class="opt" data-car="6">オープンスポーツ<small>屋根なし・軽快</small></button>
   </div>
   <div class="row" id="colors"></div>
   <div class="row" id="modes">
@@ -418,6 +422,7 @@ function makeWheel(r, w, side) {
   return g;
 }
 function makeCar(si, colorHex) {
+  if (CAR_SPECS[si].build) return CAR_SPECS[si].build(CAR_SPECS[si], colorHex);
   const sp = CAR_SPECS[si], root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const paint = new THREE.MeshPhysicalMaterial({ color: colorHex, roughness: .28, metalness: .55, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: 1.2 });
   const lift = sp.ride, mk = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = !LOW; body.add(m); return m; };
@@ -449,6 +454,152 @@ function makeCar(si, colorHex) {
   return { root, body, wheels, fronts, tailMat, spec: sp, paint };
 }
 
+/* =============== 追加の車（レーシングマシン） =============== */
+CAR_COLORS.push('#0b1238');
+const paintOf = c => new THREE.MeshPhysicalMaterial({ color: c, roughness: .26, metalness: .45, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: 1.2 });
+const flatOf = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r == null ? .5 : r });
+const carbonMat = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: .35, metalness: .4 });
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+// 車の横がわに はる デザイン（キャンバスの 左＝車のうしろ、右＝車の前）
+function liveryMat(L, y0, H, draw) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 256; draw(c.getContext('2d'), 1024, 256);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; t.repeat.set(1 / L, 1 / H); t.offset.set(.5, -y0 / H);
+  return new THREE.MeshPhysicalMaterial({ map: t, roughness: .3, metalness: .25, clearcoat: 1, clearcoatRoughness: .06 });
+}
+function decalMat(text, aspect, bg, fg) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = Math.round(256 / aspect); const g = c.getContext('2d');
+  g.fillStyle = bg; rrect(g, 4, 4, c.width - 8, c.height - 8, 26); g.fill(); g.fillStyle = fg; g.font = `italic 900 ${Math.round(c.height * .7)}px Helvetica,Arial,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, c.width / 2, c.height * .55);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: .4, polygonOffset: true, polygonOffsetFactor: -2 });
+}
+// 上がわの輪郭 ＋ タイヤハウス（切りかき）つきの 下がわ
+function withArches(top, wf, wr, r) {
+  const R = r + .07, yb = Math.min(top[0][1], top[top.length - 1][1]), out = top.slice(), arch = zc => { out.push([zc - R, yb]); for (let i = 0; i <= 8; i++) { const a = Math.PI - i / 8 * Math.PI; out.push([zc + Math.cos(a) * R, r + Math.sin(a) * R]); } out.push([zc + R, yb]); };
+  arch(wr); arch(wf); return out;
+}
+function carKit() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const add = (geo, mat, x, y, z, rx, ry, rz) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = !LOW; body.add(m); return m; };
+  const box = (w, h, d, mat, x, y, z, rx, ry, rz) => add(new THREE.BoxGeometry(w, h, d), mat, x, y, z, rx, ry, rz);
+  const wheels = [], fronts = [];
+  const wheel = (x, z, r, w, front) => { for (const s of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(s * x, r, z); const wh = makeWheel(r, w, s); piv.add(wh); root.add(piv); wheels.push(wh); if (front) fronts.push(piv); } };
+  const rod = (a, b, r, mat) => { const d = new THREE.Vector3().subVectors(b, a), m = add(new THREE.CylinderGeometry(r, r, d.length(), 6), mat, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize()); return m; };
+  const sides = (geo, mat, x, y, z) => { for (const s of [-1, 1]) add(geo, mat, s * x, y, z, 0, s * Math.PI / 2, 0).castShadow = false; };
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x7a0000, emissive: 0xff1100, emissiveIntensity: .7 });
+  const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff5cc, emissiveIntensity: 1.6 });
+  return { root, body, add, box, wheel, rod, sides, wheels, fronts, tailMat, lightMat };
+}
+const done = (k, sp, P) => ({ root: k.root, body: k.body, wheels: k.wheels, fronts: k.fronts, tailMat: k.tailMat, spec: sp, paint: P });
+
+// GTマシン（GT500風）：低くて幅広い、大きなウイング
+function buildGT500(sp, color) {
+  const k = carKit(), P = paintOf(color), Wt = paintOf('#f2f2f2'), W = sp.W;
+  const liv = liveryMat(5.0, .15, 1.0, (g, w, h) => {
+    g.fillStyle = color; g.fillRect(0, 0, w, h);
+    g.save(); g.translate(w * .27, h * .42); g.fillStyle = '#f4f4f4';
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 250, a, a + .18); g.closePath(); g.fill(); }
+    g.fillStyle = color; g.beginPath(); g.arc(0, 0, 34, 0, 7); g.fill(); g.restore();
+    g.fillStyle = '#121212'; g.fillRect(w * .14, h * .8, w * .7, h * .2);
+    g.fillStyle = '#f4f4f4'; g.fillRect(w * .52, h * .58, w * .44, 7);
+  });
+  const top = [[2.45, .2], [2.52, .4], [2.42, .6], [2.05, .72], [1.4, .84], [.8, .95], [-.2, .98], [-1.4, 1.0], [-2.1, 1.02], [-2.45, .95], [-2.52, .6], [-2.45, .2]];
+  k.add(extrudeProfile(withArches(top, 1.5, -1.5, .36), W, .07), [liv, P], 0, 0, 0);
+  const cab = [[.85, .95], [.3, 1.22], [-.85, 1.25], [-1.55, 1.02], [-1.65, .98]];
+  k.add(extrudeProfile(cab, W * .8, .05), glassMat, 0, 0, 0);
+  k.box(W * .76, .06, 1.1, Wt, 0, 1.26, -.28);
+  for (const z of [1.5, -1.5]) for (const s of [-1, 1]) k.box(.14, .12, 1.05, P, s * (W / 2 + .03), .82, z);
+  for (const s of [-1, 1]) { k.box(.12, .16, 2.3, carbonMat, s * (W / 2 + .02), .26, 0); k.box(.3, .03, .35, carbonMat, s * (W / 2 - .05), .42, 2.3, 0, 0, s * .35); k.box(.62, .07, .14, k.lightMat, s * (W / 2 - .42), .6, 2.42, -.45).castShadow = false; k.box(.22, .12, .16, P, s * (W / 2 + .1), 1.08, .72); }
+  k.box(W + .25, .05, .6, carbonMat, 0, .19, 2.35); k.box(W * .6, .24, .08, blackMat, 0, .36, 2.52);
+  k.box(W + .2, .06, .55, P, 0, 1.5, -2.3); k.box(W + .2, .04, .25, P, 0, 1.6, -2.45, .35);
+  for (const s of [-1, 1]) { k.box(.04, .45, .8, carbonMat, s * (W + .2) / 2, 1.44, -2.32); k.box(.05, .5, .12, carbonMat, s * .38, 1.24, -2.12); }
+  k.box(W * .85, .08, .06, k.tailMat, 0, .86, -2.5); k.box(W, .2, .3, carbonMat, 0, .26, -2.4);
+  k.rod(V3(.15, 1.27, -.5), V3(.18, 1.78, -.7), .01, carbonMat); k.rod(V3(-.1, 1.27, -.2), V3(-.08, 1.62, -.35), .01, carbonMat);
+  k.sides(new THREE.PlaneGeometry(.62, .46), decalMat('23', .62 / .46, '#ffffff', '#111'), W / 2 + .006, .62, -.05);
+  k.wheel(sp.wx, 1.5, sp.wr, .33, true); k.wheel(sp.wx, -1.5, sp.wr, .35, false);
+  return done(k, sp, P);
+}
+// ツーリングカー（TCR風）：ハッチバック＋大きなリアウイング
+function buildTCR(sp, color) {
+  const k = carKit(), P = paintOf(color), Wt = paintOf('#f4f4f4'), W = sp.W;
+  const liv = liveryMat(4.4, .16, 1.0, (g, w, h) => {
+    g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#111'; g.beginPath(); g.moveTo(w * .26, h); g.lineTo(w * .45, h * .3); g.lineTo(w * .8, h * .26); g.lineTo(w * .66, h); g.fill();
+    g.fillStyle = color; g.beginPath(); g.moveTo(0, h * .42); g.lineTo(w * .3, h * .62); g.lineTo(w * .28, h); g.lineTo(0, h); g.fill();
+    g.beginPath(); g.moveTo(w * .66, h); g.lineTo(w * .82, h * .24); g.lineTo(w * .9, h * .24); g.lineTo(w * .76, h); g.fill();
+    g.fillRect(0, h * .2, w, h * .045); g.fillStyle = '#111'; g.fillRect(0, h * .9, w, h * .1);
+  });
+  const top = [[2.15, .26], [2.22, .48], [2.08, .74], [1.5, .86], [.95, .93], [-1.9, .98], [-2.12, .9], [-2.18, .5], [-2.1, .26]];
+  k.add(extrudeProfile(withArches(top, 1.33, -1.33, .35), W, .07), [liv, Wt], 0, 0, 0);
+  k.add(extrudeProfile([[.95, .93], [.35, 1.42], [-1.5, 1.48], [-2.02, .98]], W * .82, .05), glassMat, 0, 0, 0);
+  k.box(W * .78, .06, 1.75, P, 0, 1.49, -.6);
+  for (const z of [1.33, -1.33]) for (const s of [-1, 1]) k.box(.16, .14, 1.0, Wt, s * (W / 2 + .04), .79, z);
+  for (const s of [-1, 1]) { k.box(.12, .16, 1.9, carbonMat, s * (W / 2 + .03), .27, 0); k.box(.5, .08, .12, k.lightMat, s * (W / 2 - .38), .62, 2.13, -.45).castShadow = false; k.box(.22, .12, .16, P, s * (W / 2 + .1), 1.08, .78); k.box(.05, .4, .12, carbonMat, s * .45, 1.32, -2.02); k.box(.04, .38, .55, P, s * W / 2, 1.5, -2.1); }
+  k.box(W + .2, .05, .55, carbonMat, 0, .2, 2.1); k.box(W * .62, .2, .08, blackMat, 0, .4, 2.22); k.box(W * .5, .1, .06, P, 0, .55, 2.19);
+  k.box(W, .06, .5, carbonMat, 0, 1.52, -2.1); k.box(W * .8, .08, .06, k.tailMat, 0, .8, -2.19); k.box(W * .9, .2, .25, carbonMat, 0, .28, -2.1);
+  k.sides(new THREE.PlaneGeometry(.5, .5), decalMat('17', 1, '#ffd600', '#111'), W / 2 + .006, .7, .25);
+  k.wheel(sp.wx, 1.33, sp.wr, .3, true); k.wheel(sp.wx, -1.33, sp.wr, .3, false);
+  return done(k, sp, P);
+}
+// オープンスポーツ：屋根なし・ロールバー・丸いライト
+function buildRoadster(sp, color) {
+  const k = carKit(), P = paintOf(color), Wt = paintOf('#f4f4f4'), W = sp.W;
+  const draw = (g, w, h) => {
+    g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, w, h);
+    g.fillStyle = color; g.beginPath(); g.moveTo(0, h * .55); g.lineTo(w, h * .2); g.lineTo(w, h * .32); g.lineTo(0, h * .7); g.fill();
+    g.beginPath(); g.moveTo(0, h * .85); g.lineTo(w * .55, h * .62); g.lineTo(w * .6, h); g.lineTo(0, h); g.fill();
+    g.fillStyle = '#16181d'; g.beginPath(); g.moveTo(w * .62, h); g.lineTo(w * .7, h * .5); g.lineTo(w, h * .36); g.lineTo(w, h); g.fill();
+  };
+  const liv = liveryMat(4.5, .15, .9, draw);
+  const tub = [[2.05, .24], [2.12, .4], [1.95, .58], [1.4, .66], [.55, .7], [-.6, .7], [-1.1, .8], [-1.75, .86], [-2.1, .8], [-2.15, .45], [-2.05, .24], [-1, .18], [1, .18]];
+  k.add(extrudeProfile(tub, W - .84, .05), [liv, Wt], 0, 0, 0);
+  const pod = [[2.15, .24], [2.22, .48], [2.08, .78], [1.75, .9], [1.15, .86], [.65, .66], [-.25, .64], [-.75, .78], [-1.2, .92], [-1.85, .92], [-2.15, .8], [-2.22, .45], [-2.12, .24]];
+  for (const s of [-1, 1]) k.add(extrudeProfile(withArches(pod, 1.4, -1.45, .33), .44, .06), [liv, Wt], s * (W / 2 - .22), 0, 0);
+  k.box(W - .92, .02, 1.15, blackMat, 0, .715, -.02);
+  k.box(.5, .38, .1, carbonMat, 0, .86, -.6);
+  const helm = k.add(new THREE.SphereGeometry(.155, 18, 14), paintOf('#e53935'), 0, .93, -.35); k.box(.24, .07, .1, blackMat, 0, .95, -.22);
+  k.add(new THREE.TorusGeometry(.3, .045, 8, 18, Math.PI), carbonMat, 0, .72, -.72);
+  k.box(.62, .2, .02, glassMat, 0, .8, .52, -.6);
+  for (const s of [-1, 1]) { const hl = k.add(new THREE.CylinderGeometry(.11, .11, .08, 18), k.lightMat, s * .7, .62, 2.19, Math.PI / 2 - .5); hl.castShadow = false; k.add(new THREE.CylinderGeometry(.14, .14, .06, 18), blackMat, s * .7, .62, 2.16, Math.PI / 2 - .5);
+    k.box(.04, .42, .12, carbonMat, s * .38, .97, -1.92); k.box(.04, .36, .55, P, s * (W - .25) / 2, 1.16, -1.95); k.rod(V3(s * .5, .72, .3), V3(s * .62, .95, .32), .015, carbonMat); k.box(.14, .08, .06, Wt, s * .64, .97, .33); }
+  k.box(W - .25, .05, .45, Wt, 0, 1.2, -1.95); k.box(W * .55, .07, .05, k.tailMat, 0, .62, -2.16); k.box(W - .2, .05, .4, carbonMat, 0, .19, 2.05);
+  k.sides(new THREE.PlaneGeometry(.42, .5), decalMat('1', .84, '#ffffff', '#111'), W / 2 + .006, .55, -.25);
+  k.wheel(sp.wx, 1.4, .32, .28, true); k.wheel(sp.wx, -1.45, .33, .3, false);
+  return done(k, sp, P);
+}
+// フォーミュラ（F1風）：タイヤむきだし・ヘイロー・前後ウイング
+function buildFormula(sp, color) {
+  const k = carKit(), P = paintOf(color), red = paintOf('#e10600'), yel = paintOf('#ffc400');
+  const liv = liveryMat(5.2, .1, 1.0, (g, w, h) => {
+    g.fillStyle = color; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#e10600'; g.beginPath(); g.moveTo(w * .3, h * .82); g.lineTo(w * .88, h * .5); g.lineTo(w * .88, h * .64); g.lineTo(w * .3, h * .95); g.fill();
+    g.fillStyle = '#ffc400'; g.fillRect(w * .9, 0, w * .1, h); g.beginPath(); g.moveTo(w * .3, h * .3); g.lineTo(w * .42, h * .1); g.lineTo(w * .5, h * .1); g.lineTo(w * .38, h * .3); g.fill();
+  });
+  const tubP = [[2.55, .17], [2.6, .24], [1.8, .38], [.9, .52], [.4, .6], [-.3, .62], [-.6, .72], [-.95, .98], [-1.35, .86], [-1.9, .62], [-2.35, .45], [-2.5, .3], [-2.4, .18], [-1, .14], [1.6, .14]];
+  k.add(extrudeProfile(tubP, .56, .05), [liv, P], 0, 0, 0);
+  const pod = [[.55, .16], [.6, .42], [.4, .55], [-.2, .56], [-1.1, .44], [-1.75, .32], [-1.8, .17], [-.5, .13]];
+  for (const s of [-1, 1]) k.add(extrudeProfile(pod, .34, .05), [liv, P], s * .45, 0, 0);
+  k.box(.4, .02, .95, blackMat, 0, .635, .02);
+  k.add(new THREE.SphereGeometry(.14, 18, 14), yel, 0, .73, -.15); k.box(.22, .06, .1, blackMat, 0, .75, -.03);
+  k.box(.2, .16, .05, blackMat, 0, .92, -.6);
+  const halo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-.3, .62, -.45), V3(-.3, .86, -.12), V3(0, .88, .3), V3(.3, .86, -.12), V3(.3, .62, -.45)]), 30, .035, 8);
+  k.add(halo, carbonMat, 0, 0, 0); k.rod(V3(0, .88, .3), V3(0, .6, .5), .03, carbonMat);
+  k.box(1.95, .035, .42, P, 0, .11, 2.42); k.box(1.8, .03, .22, red, 0, .18, 2.3, -.25);
+  for (const s of [-1, 1]) { k.box(.03, .2, .5, carbonMat, s * .98, .18, 2.37); k.box(.03, .55, .62, P, s * .5, .85, -2.42);
+    k.rod(V3(s * .27, .3, 1.85), V3(s * .7, .34, 1.75), .02, carbonMat); k.rod(V3(s * .25, .42, 1.6), V3(s * .7, .38, 1.72), .02, carbonMat);
+    k.rod(V3(s * .55, .28, -1.5), V3(s * .66, .36, -1.6), .02, carbonMat); k.rod(V3(s * .5, .45, -1.75), V3(s * .66, .42, -1.62), .02, carbonMat);
+    k.rod(V3(s * .3, .62, .3), V3(s * .45, .7, .32), .012, carbonMat); k.box(.14, .07, .05, P, s * .47, .7, .32); }
+  k.box(1.0, .05, .34, P, 0, .98, -2.42); k.box(1.0, .04, .2, red, 0, 1.08, -2.36, .3);
+  k.box(1.35, .03, 3.4, carbonMat, 0, .09, -.3); k.box(.12, .08, .04, k.tailMat, 0, .3, -2.53);
+  k.wheel(.82, 1.75, .33, .34, true); k.wheel(.8, -1.6, .36, .42, false);
+  return done(k, sp, P);
+}
+CAR_SPECS.push(
+  { name: 'GT500', W: 2.1, wr: .36, wx: .92, def: 0, build: buildGT500, sc: { accel: 11, power: 400, drag: .0008, steerRate: 2.1, latG: 23, grip: 10.5, gripHB: 1.6 } },
+  { name: 'FORMULA', W: 1.9, wr: .36, wx: .8, def: 8, build: buildFormula, sc: { accel: 12.5, power: 450, drag: .00078, steerRate: 2.25, latG: 27, grip: 12, gripHB: 1.9 } },
+  { name: 'TCR', W: 2.0, wr: .35, wx: .9, def: 1, build: buildTCR, sc: { accel: 9.2, power: 280, drag: .0009, steerRate: 2.25, latG: 18, grip: 8.5, gripHB: 1.4 } },
+  { name: 'ROADSTER', W: 1.86, wr: .33, wx: .8, def: 1, build: buildRoadster, sc: { accel: 10, power: 300, drag: .00085, steerRate: 2.3, latG: 21, grip: 9.5, gripHB: 1.5 } }
+);
+
 /* =============== ゲームじょうたい =============== */
 const players = []; let player = null, ais = [];
 let state = 'menu', raceT = 0, paused = false, selCar = 0, selColor = 0, selMode = 'race', selLaps = 3, camMode = 0, countdown = 0, lapsTotal = 3;
@@ -475,7 +626,7 @@ function startRace() {
   if (selMode === 'race') {
     const cols = shuffle(CAR_COLORS.filter((_, i) => i !== selColor)).concat(['#ff4081']);
     let k = 0;
-    for (let s = 0; s < 6; s++) { if (s === slot) continue; const a = { s: 0, v: 0, skill: rnd(.9, 1.0) - k * .012, lane: (s % 2 ? 1 : -1) * rnd(1.5, 4.5), off: 0, car: makeCar(k % 3, cols[k % cols.length]), finished: false, done: 0 };
+    for (let s = 0; s < 6; s++) { if (s === slot) continue; const a = { s: 0, v: 0, skill: rnd(.9, 1.0) - k * .012, lane: (s % 2 ? 1 : -1) * rnd(1.5, 4.5), off: 0, car: makeCar(Math.floor(Math.random() * CAR_SPECS.length), cols[k % cols.length]), finished: false, done: 0 };
       const sf = -2 - s * 2.6; a.s = sf; const t = trackAt(sf); a.off = (s % 2 ? 3 : -3); scene.add(a.car.root); ais.push(a); k++; }
   }
   raceT = 0; lapStartT = 0; lapTimes = []; finished = false; finishRank = 0; paused = false; driftTotal = 0; wrongT = 0; camInit = false; lastLapShown = 0;
@@ -796,8 +947,8 @@ function drawMini() {
   ais.forEach(a => dot(a.x, a.z, '#ff5252', 8)); if (player) { dot(player.x, player.z, '#ffca28', 11); mg.strokeStyle = '#000'; mg.lineWidth = 3; mg.stroke(); }
 }
 function menuCam(rdt) {
-  const t = clockT * .12, p = trackAt(0);
-  camera.position.set(p.x + Math.cos(t) * 30 + 10, 5, p.z + Math.sin(t) * 30); camera.lookAt(p.x, 1.2, p.z);
+  const t = window.__carAng != null ? window.__carAng : clockT * .12, p = trackAt(0), cr = window.__carAng != null ? 7.5 : 30;
+  camera.position.set(p.x + Math.cos(t) * cr + (cr > 10 ? 10 : 0), cr > 10 ? 5 : 2.2, p.z + Math.sin(t) * cr); camera.lookAt(p.x, cr > 10 ? 1.2 : .7, p.z);
   if (!menuCar) { menuCar = makeCar(selCar, CAR_COLORS[selColor]); menuCar.root.position.set(p.x, 0, p.z); menuCar.root.rotation.y = Math.atan2(p.tx, p.tz); scene.add(menuCar.root); }
   sky.position.copy(camera.position); sunSpr.position.copy(camera.position).addScaledVector(SUN_DIR, 1700); sunLight.position.set(p.x + SUN_DIR.x * 90, SUN_DIR.y * 90, p.z + SUN_DIR.z * 90); sunLight.target.position.set(p.x, 0, p.z);
 }
@@ -822,7 +973,7 @@ async function enableTilt() {
 /* =============== UI =============== */
 { const row = $('colors'); CAR_COLORS.forEach((c, i) => { const b = document.createElement('div'); b.className = 'sw' + (i === 0 ? ' sel' : ''); b.style.background = c; b.addEventListener('click', () => { selColor = i; row.querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === i)); refreshMenuCar(); }); row.appendChild(b); }); }
 function bindGroup(id, attr, fn) { $(id).querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { $(id).querySelectorAll('.opt').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); fn(b.dataset[attr]); })); }
-bindGroup('steerRow', 'steer', v => steerMode = v); bindGroup('cars', 'car', v => { selCar = +v; refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('laps', 'laps', v => selLaps = +v);
+bindGroup('steerRow', 'steer', v => steerMode = v); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('laps', 'laps', v => selLaps = +v);
 function renderBest() { $('best').textContent = bestLap ? '🏆 ベストラップ ' + fmt(bestLap) : ''; } renderBest();
 $('go').addEventListener('click', async () => {
   audioInit(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
