@@ -1469,12 +1469,12 @@ function bindGroup(id, attr, fn) { $(id).querySelectorAll('.opt').forEach(b => b
 bindGroup('steerRow', 'steer', v => { steerMode = v; try { localStorage.setItem('apex.steer', v); } catch (e) {} }); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); $('qualRow').querySelectorAll('.opt').forEach(b => { b.classList.toggle('sel', (b.dataset.q === 'low') === LOW); b.addEventListener('click', () => { const want = b.dataset.q; if ((want === 'low') === LOW) return; try { localStorage.setItem('apex.quality', want); } catch (e) {} location.reload(); }); }); bindGroup('diffRow', 'diff', v => { selDiff = v; try { localStorage.setItem('apex.diff', v); } catch (e) {} }); $('diffRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.diff === selDiff)); bindGroup('laps', 'laps', v => selLaps = +v);
 function renderBest() { $('best').textContent = bestLap ? '🏆 ベストラップ ' + fmt(bestLap) : ''; } renderBest();
 $('go').addEventListener('click', async () => {
-  audioInit(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
+  audioInit(); speechPrime(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
   if (steerMode === 'tilt') { const ok = await enableTilt(); if (!ok) { $('tiltDlg').classList.remove('hidden'); return; } }
   startRace();
   if (steerMode === 'tilt') setTimeout(() => { if (!tiltHas) { showMsg('傾きセンサーが使えません', '#ff8a80'); steerMode = 'btn'; applyTiltUI(); } }, 1500);
 });
-$('again').addEventListener('click', startRace);
+$('again').addEventListener('click', () => { speechPrime(); startRace(); });
 // 傾きの許可を キャンセルしたとき：iPhone/iPadは 読み込み直さないと もう一度聞いてくれない
 function syncSteerUI() { $('steerRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.steer === steerMode)); }
 try { const sm = localStorage.getItem('apex.steer'); if (sm === 'tilt' || sm === 'btn') steerMode = sm; } catch (e) {}
@@ -1934,7 +1934,18 @@ function makeQuestion(kind, tier) {
 let jaVoice = null;
 function loadVoice() { if (window.speechSynthesis) jaVoice = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)) || null; }
 if (window.speechSynthesis) { loadVoice(); speechSynthesis.onvoiceschanged = loadVoice; }
-function say(t) { if (!window.speechSynthesis) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'ja-JP'; u.rate = .95; if (jaVoice) u.voice = jaVoice; speechSynthesis.speak(u); } catch (e) {} }
+function say(t) {
+  if (!window.speechSynthesis) return;
+  try {
+    if (!jaVoice) loadVoice();
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'ja-JP'; u.rate = .95; if (jaVoice) u.voice = jaVoice;
+    const ss = speechSynthesis; ss.resume();
+    // Safari は cancel の直後に speak すると 声が消えることがあるので、すこし待つ
+    if (ss.speaking || ss.pending) { ss.cancel(); setTimeout(() => ss.speak(u), 80); } else ss.speak(u);
+  } catch (e) {}
+}
+// iPhone・iPad は「タップした その時」に 一度しゃべらせないと、あとから声が出ない。START を押した時に よぶ
+function speechPrime() { if (TURBO) say('もんだいを よく きいてね'); }
 const sfxOk = () => { tone(660, .12, 'square', .08); setTimeout(() => tone(990, .25, 'square', .08), 110); setTimeout(() => tone(1320, .35, 'square', .08), 230); };
 const sfxNg = () => tone(220, .4, 'square', .1, 120);
 
@@ -1990,7 +2001,7 @@ function showQuiz() {
 function renderStars() { $('qStars').textContent = `⭐ ${tStars}　せいかい ${tOk}/${tTotal}` + (tCombo >= 2 ? `　COMBO ×${tCombo}` : ''); }
 function turboStart() {
   removeGate(); tPhase = 'wait'; tT = 2.5; tOk = 0; tTotal = 0; tCombo = 0; tSession = 0; tRetry = false; tq = null;
-  $('quiz').classList.add('hidden'); $('qStars').classList.remove('hidden'); renderStars(); say(' ');
+  $('quiz').classList.add('hidden'); $('qStars').classList.remove('hidden'); renderStars();
 }
 function turboStop() { removeGate(); tPhase = 'off'; $('quiz').classList.add('hidden'); if (window.speechSynthesis) speechSynthesis.cancel(); }
 function turboJudge() {
