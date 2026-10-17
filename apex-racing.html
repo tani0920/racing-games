@@ -705,7 +705,7 @@ function finishRace() {
   recLapStart = recPrevLap;
   const win = selMode !== 'race' || finishRank === 1;
   showMsg(selMode === 'race' ? (win ? '🏆 優勝！ FINISH!' : `FINISH! ${finishRank}位`) : 'FINISH!', win ? '#ffd740' : '#69f0ae', true); startFinishFx(win);
-  setTimeout(() => { if (state !== 'racing') return; state = 'finished'; bgmLevel(.07); showResult(); }, 3500);
+  setTimeout(() => { if (state !== 'racing') return; state = 'finished'; bgmLevel(.16); if (rec.length - recLapStart >= 30) startReplay(); else { bgmLevel(.07); showResult(); } }, 3500);
 }
 function showResult() {
   let h = `<tr><td>総タイム</td><td>${fmt(finishTime)}</td></tr>`;
@@ -1028,7 +1028,7 @@ function startReplay() {
   player.idx = nearestFull(rec[recLapStart][0], rec[recLapStart][1]); player.cum = player.idx;
   $('rpSlow').classList.remove('on'); $('rpPause').textContent = '⏸'; if (ac) { bgmLevel(.12); }
 }
-function endReplay() { state = 'finished'; $('replayUI').classList.add('hidden'); $('hud').classList.remove('hidden'); camInit = false; showResult(); }
+function endReplay() { bgmLevel(.07); state = 'finished'; $('replayUI').classList.add('hidden'); $('hud').classList.remove('hidden'); camInit = false; showResult(); }
 function replayStep(rdt) {
   if (!repPaused) repT += rdt * (repSlow ? .35 : 1);
   repCamT += rdt; if (repCamT > 5 && !repPaused) { repCam = (repCam + 1) % REP_CAMS.length; repCamT = 0; repSpot = null; repJust = true; }
