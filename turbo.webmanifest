@@ -1,0 +1,16 @@
+{
+  "id": "./apex-racing.html?turbo",
+  "name": "TURBO DRIVE",
+  "short_name": "TURBO",
+  "description": "走りながら小2の問題に答えるレースゲーム",
+  "start_url": "./apex-racing.html?turbo",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#143d2f",
+  "theme_color": "#143d2f",
+  "icons": [
+    { "src": "turbo-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "turbo-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

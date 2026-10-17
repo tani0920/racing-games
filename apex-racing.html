@@ -9,6 +9,12 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <meta name="apple-mobile-web-app-title" content="APEX">
 <meta name="theme-color" content="#0b0d14">
+<script>/* TURBO DRIVE で ひらいたときは ホーム画面の アイコンと 名前を TURBO 用にする */
+if (/[?&]turbo\b/.test(location.search)) { document.title = 'TURBO DRIVE';
+  const q = (sel, at, v) => { const e = document.querySelector(sel); if (e) e.setAttribute(at, v); };
+  q('link[rel="manifest"]', 'href', 'turbo.webmanifest'); q('link[rel="apple-touch-icon"]', 'href', 'turbo-touch-icon.png'); q('link[rel="icon"]', 'href', 'turbo-icon-192.png');
+  q('meta[name="apple-mobile-web-app-title"]', 'content', 'TURBO'); q('meta[name="theme-color"]', 'content', '#143d2f'); }
+</script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d14; color: #fff; touch-action: none;
