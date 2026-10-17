@@ -143,7 +143,7 @@
   <div class="row" id="laps">
     <button class="opt sel" data-laps="3">3 周</button><button class="opt" data-laps="5">5 周</button><button class="opt" data-laps="1">1 周</button>
   </div>
-  <div class="row" id="courseRow"><button class="opt sel" data-course="preset">標準サーキット<small>全長 約2.5km</small></button><button class="opt" data-course="custom">オリジナルコース<small id="customName">作る・えらぶ</small></button></div>
+  <div class="row" id="courseRow"><button class="opt sel" data-course="preset">標準サーキット<small>森の中・約2.5km</small></button><button class="opt" data-course="city">シティ・サンセット<small>夕焼けの市街地</small></button><button class="opt" data-course="sea">シーサイド<small>海沿いの高速コース</small></button><button class="opt" data-course="custom">オリジナルコース<small id="customName">作る・えらぶ</small></button></div>
   <div class="row" id="steerRow"><button class="opt sel" data-steer="btn">ボタンでハンドル</button><button class="opt" data-steer="tilt">傾きでハンドル<small>iPad・スマホを傾ける</small></button></div>
   <button id="go" class="it">START</button>
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
@@ -313,13 +313,88 @@ const off = (i, d, y) => [TR.x[i] + TR.nx[i] * d, y, TR.z[i] + TR.nz[i] * d];
 const hw = ROAD_W / 2;
 const grassMat = new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), grassMat); ground.rotation.x = -Math.PI / 2; ground.position.y = -.12; ground.receiveShadow = true; scene.add(ground);
+/* =============== コースのテーマ（空・光・地面・景色） =============== */
+const envSky = envScene.children[0], envSun = envScene.children[1], hemi = scene.children.find(o => o.isHemisphereLight);
+const THEMES = {
+  forest: { sky: [0x2a6fd1, 0xcfe3f5, 0xb9cbd8], env: [0x3f86d6, 0xdfeaf5, 0x4b5a38], fog: [0xbcd3e6, 220, 1000], hemi: [0xcfe3ff, 0x5b6b45, .75], sun: [0xfff1d6, 2.2], sunDir: [-.45, .62, -.64], ground: 'grass', runoff: 0x5a6a45, scenery: 'forest', mountains: true, exposure: 1.05, sunSpr: 0xffffff },
+  city: { sky: [0x0f1838, 0xf2894f, 0x2a2238], env: [0x1a2550, 0xe9946a, 0x2a2a30], fog: [0x8c6878, 170, 900], hemi: [0xffc6a0, 0x2a2a3a, .6], sun: [0xff9a5c, 1.5], sunDir: [-.7, .16, -.6], ground: 'concrete', runoff: 0x4d5058, scenery: 'city', mountains: false, exposure: 1.0, sunSpr: 0xffa860 },
+  beach: { sky: [0x0f63c8, 0x8cc8f0, 0x8cc8f0], env: [0x2f8de0, 0xbfe3f7, 0x14608f], fog: [0x9fcbe8, 320, 1700], hemi: [0xd6eeff, 0xb59a6a, .7], sun: [0xfff3da, 1.9], sunDir: [-.3, .75, -.55], ground: 'sand', runoff: 0xa88c5c, scenery: 'beach', mountains: false, exposure: .92, sunSpr: 0xffffff }
+};
+let THEME = THEMES.forest, themeName = '';
+const groundTexs = { grass: grassTex };
+function groundTex(kind) {
+  if (!groundTexs[kind]) {
+    const base = kind === 'sand' ? [217, 192, 145] : [96, 99, 106];
+    groundTexs[kind] = canvasTex(256, 256, (g, w, h) => { g.fillStyle = `rgb(${base})`; g.fillRect(0, 0, w, h); for (let i = 0; i < 7000; i++) { const d = rnd(-18, 18); g.fillStyle = `rgba(${base.map(c => Math.round(c + d))},.6)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); } }, true);
+    groundTexs[kind].repeat.set(300, 300);
+  }
+  return groundTexs[kind];
+}
+function applyTheme(name) {
+  if (themeName === name) return; themeName = name; const T = THEME = THEMES[name] || THEMES.forest;
+  skyColors(skyGeo, ...T.sky); scene.fog.color.set(T.fog[0]); scene.fog.near = T.fog[1]; scene.fog.far = T.fog[2];
+  hemi.color.set(T.hemi[0]); hemi.groundColor.set(T.hemi[1]); hemi.intensity = T.hemi[2];
+  sunLight.color.set(T.sun[0]); sunLight.intensity = T.sun[1]; SUN_DIR.set(...T.sunDir).normalize(); renderer.toneMappingExposure = T.exposure;
+  grassMat.map = groundTex(T.ground); grassMat.needsUpdate = true; ground.visible = T.scenery !== 'beach'; sunSpr.material.color.set(T.sunSpr);
+  skyColors(envSky.geometry, ...T.env); envSun.position.copy(SUN_DIR).multiplyScalar(40);
+  const pm = new THREE.PMREMGenerator(renderer), old = scene.environment; scene.environment = pm.fromScene(envScene, .03).texture; pm.dispose(); if (old) old.dispose();
+}
+// 夕焼けの市街地：ビル・街灯
+const winTexs = [];
+function cityWinTex(k) {
+  if (!winTexs[k]) winTexs[k] = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = ['#2b2f3a', '#3a3340', '#2f3a44', '#45403a'][k]; g.fillRect(0, 0, w, h);
+    for (let y = 6; y < h; y += 14) for (let x = 6; x < w; x += 12) { g.fillStyle = Math.random() < .55 ? pick(['#ffd889', '#ffe9b8', '#ffc36b', '#bfe3ff']) : '#1a1d24'; g.fillRect(x, y, 7, 8); }
+  }, true);
+  return winTexs[k];
+}
+function buildCity(near, BX, BZ, BR, m4) {
+  const mats = [0, 1, 2, 3].map(k => new THREE.MeshStandardMaterial({ map: cityWinTex(k), emissiveMap: cityWinTex(k), emissive: 0xffffff, emissiveIntensity: .75, roughness: .7 }));
+  let made = 0, tries = 0;
+  while (made < 260 && tries++ < 5000) {
+    const a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * (BR + 150), x = BX + Math.cos(a) * r, z = BZ + Math.sin(a) * r, w = rnd(14, 34), d = rnd(14, 34);
+    if (near(x, z) < WALL_D + 8 + Math.max(w, d) * .75) continue;
+    const far = Math.min(1, near(x, z) / 300), h = rnd(14, 40) + far * rnd(20, 80);
+    const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / 12, uv.getY(i) * h / 12);
+    const m = new THREE.Mesh(geo, pick(mats)); m.position.set(x, h / 2, z); m.rotation.y = rnd(-.2, .2); m.castShadow = !LOW && h < 50; m.receiveShadow = true; courseGroup.add(m); made++;
+  }
+  // スカイライン（遠くのビル群）
+  for (let i = 0; i < 60; i++) { const a = i / 60 * 6.283, h = rnd(60, 180), w = rnd(40, 90), geo = new THREE.BoxGeometry(w, h, w), uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 14, uv.getY(k) * h / 14);
+    const m = new THREE.Mesh(geo, pick(mats)); m.position.set(BX + Math.cos(a) * (BR + 380), h / 2, BZ + Math.sin(a) * (BR + 300)); courseGroup.add(m); }
+  // 街灯
+  const cnt = Math.floor(N / 10) * 2, pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(.15, .2, 8, 6), flatOf(0x3a3e48, .5), cnt), lamp = new THREE.InstancedMesh(new THREE.SphereGeometry(.6, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffe2a8, emissive: 0xffd27a, emissiveIntensity: 2 }), cnt);
+  let li = 0; for (let i = 0; i < N; i += 10) for (const s of [-1, 1]) { const x = TR.x[i] + TR.nx[i] * s * (WALL_D + 1.5), z = TR.z[i] + TR.nz[i] * s * (WALL_D + 1.5); m4.makeTranslation(x, 4, z); pole.setMatrixAt(li, m4); m4.makeTranslation(x, 8.2, z); lamp.setMatrixAt(li++, m4); }
+  pole.count = lamp.count = li; courseGroup.add(pole, lamp);
+}
+// 海沿い：砂浜・海・ヤシの木
+function buildBeach(near, BX, BZ, BR, m4) {
+  const sand = new THREE.MeshStandardMaterial({ color: 0x6f5838, roughness: 1 });
+  makeStrip(i => off(i, WALL_D + 70, -.1), i => off(i, hw, -.1), 20, sand); makeStrip(i => off(i, -hw, -.1), i => off(i, -WALL_D - 70, -.1), 20, sand);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0x06375e, roughness: .35, metalness: 0, envMapIntensity: .5 })); sea.rotation.x = -Math.PI / 2; sea.position.set(BX, -.6, BZ); sea.receiveShadow = true; courseGroup.add(sea);
+  for (let i = 0; i < 10; i++) { const a = rnd(0, 6.283), r = BR + rnd(500, 900), h = rnd(40, 110), m = new THREE.Mesh(new THREE.ConeGeometry(rnd(150, 260), h, 7), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(.3, .35, rnd(.28, .38)), roughness: 1, flatShading: true })); m.position.set(BX + Math.cos(a) * r, h / 2 - 2, BZ + Math.sin(a) * r); courseGroup.add(m); }
+  const palms = []; let tries = 0;
+  while (palms.length < 320 && tries++ < 6000) { const a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * BR, x = BX + Math.cos(a) * r, z = BZ + Math.sin(a) * r, dn = near(x, z); if (dn > WALL_D + 6 && dn < WALL_D + 62) palms.push([x, z, rnd(.8, 1.3), rnd(0, 6.283), rnd(.05, .22)]); }
+  const n = palms.length, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.22, .38, 9, 6), flatOf(0x8d6e4a, .9), n), lg = new THREE.BoxGeometry(4.6, .08, 1.1); lg.translate(2.3, 0, 0);
+  const leaf = new THREE.InstancedMesh(lg, flatOf(0x3f8f3a, .8), n * 7), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+  palms.forEach(([x, z, s, dir, tilt], i) => {
+    e.set(Math.sin(dir) * tilt, 0, Math.cos(dir) * tilt); q.setFromEuler(e); sc.set(s, s, s); const top = new THREE.Vector3(0, 9 * s, 0).applyQuaternion(q);
+    m4.compose(pos.set(x + top.x / 2, top.y / 2, z + top.z / 2), q, sc); trunk.setMatrixAt(i, m4);
+    for (let k = 0; k < 7; k++) { e.set(0, k / 7 * 6.283 + dir, -.45 - rnd(0, .25), 'YXZ'); q.setFromEuler(e); m4.compose(pos.set(x + top.x, top.y, z + top.z), q, sc); leaf.setMatrixAt(i * 7 + k, m4); }
+  });
+  trunk.castShadow = leaf.castShadow = !LOW; courseGroup.add(trunk, leaf);
+}
+// 組みこみのコース
+const BUILTIN = {
+  city: { theme: 'city', pts: [[-460, -260], [-160, -270], [-20, -200], [130, -270], [460, -260], [500, -110], [400, -20], [500, 110], [460, 260], [120, 270], [60, 130], [-80, 130], [-130, 270], [-460, 260], [-510, 0]] },
+  sea: { theme: 'beach', pts: [[-620, 0], [-470, -230], [-160, -310], [140, -230], [420, -300], [680, -130], [650, 130], [400, 210], [120, 120], [-110, 240], [-420, 250]] }
+};
 function buildCourse() {
   if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   courseGroup = new THREE.Group(); scene.add(courseGroup);
   // まっすぐ上に向く法線を保証するため 左→右 の順
   makeStrip(i => off(i, hw, 0), i => off(i, -hw, 0), 18, new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: .92, metalness: 0 }));
-  makeStrip(i => off(i, hw + 4, -.03), i => off(i, hw, -.03), 8, new THREE.MeshStandardMaterial({ color: 0x5a6a45, roughness: 1 }));
-  makeStrip(i => off(i, -hw, -.03), i => off(i, -hw - 4, -.03), 8, new THREE.MeshStandardMaterial({ color: 0x5a6a45, roughness: 1 }));
+  makeStrip(i => off(i, hw + 4, -.03), i => off(i, hw, -.03), 8, new THREE.MeshStandardMaterial({ color: THEME.runoff, roughness: 1 }));
+  makeStrip(i => off(i, -hw, -.03), i => off(i, -hw - 4, -.03), 8, new THREE.MeshStandardMaterial({ color: THEME.runoff, roughness: 1 }));
   // 縁石（きついカーブの内がわ・外がわ）
   const curbMat = new THREE.MeshStandardMaterial({ map: curbTex, roughness: .7 });
   const tight = i => TR.akap[i] > 1 / 170;
@@ -359,7 +434,9 @@ function buildCourse() {
   const near = (x, z) => { let m = 1e9; for (let i = 0; i < N; i += 2) { const d = Math.hypot(x - TR.x[i], z - TR.z[i]); if (d < m) m = d; } return m; };
   let bx0 = 1e9, bx1 = -1e9, bz0 = 1e9, bz1 = -1e9; for (let i = 0; i < N; i++) { bx0 = Math.min(bx0, TR.x[i]); bx1 = Math.max(bx1, TR.x[i]); bz0 = Math.min(bz0, TR.z[i]); bz1 = Math.max(bz1, TR.z[i]); }
   const BX = (bx0 + bx1) / 2, BZ = (bz0 + bz1) / 2, BR = Math.max(bx1 - bx0, bz1 - bz0) / 2 + 420;
-  const trees = [], bbs = [];
+  const m4 = new THREE.Matrix4(), col = new THREE.Color();
+  if (THEME.scenery === 'forest') {
+  const trees = [];
   let tries = 0;
   while (trees.length < 900 && tries++ < 8000) {
     const a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * BR; const x = BX + Math.cos(a) * r * 1.05, z = BZ + Math.sin(a) * r * .8;
@@ -368,7 +445,6 @@ function buildCourse() {
   const n = trees.length, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.35, .5, 3, 6), new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 1 }), n);
   const crown = new THREE.InstancedMesh(new THREE.ConeGeometry(2.6, 8, 7), new THREE.MeshStandardMaterial({ color: 0x2e5d34, roughness: .9 }), n);
   const crown2 = new THREE.InstancedMesh(new THREE.ConeGeometry(2.0, 6, 7), new THREE.MeshStandardMaterial({ color: 0x356b3b, roughness: .9 }), n);
-  const m4 = new THREE.Matrix4(), col = new THREE.Color();
   trees.forEach(([x, z, s], i) => {
     m4.makeScale(s, s, s).setPosition(x, 1.5 * s, z); trunk.setMatrixAt(i, m4);
     m4.makeScale(s, s, s).setPosition(x, (3 + 4) * s, z); crown.setMatrixAt(i, m4);
@@ -376,8 +452,11 @@ function buildCourse() {
     col.setHSL(rnd(.28, .38), rnd(.35, .5), rnd(.2, .3)); crown.setColorAt(i, col); crown2.setColorAt(i, col);
   });
   [trunk, crown, crown2].forEach(m => { m.castShadow = !LOW; courseGroup.add(m); });
+  }
+  if (THEME.scenery === 'city') buildCity(near, BX, BZ, BR, m4);
+  if (THEME.scenery === 'beach') buildBeach(near, BX, BZ, BR, m4);
   // さんみゃく
-  for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283 + rnd(-.1, .1), h = rnd(120, 320), r = rnd(120, 220);
+  if (THEME.mountains) for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283 + rnd(-.1, .1), h = rnd(120, 320), r = rnd(120, 220);
     const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(.6, .15, rnd(.45, .6)), roughness: 1, flatShading: true }));
     m.position.set(BX + Math.cos(a) * (BR + 650), h / 2 - 5, BZ + Math.sin(a) * (BR + 450)); courseGroup.add(m); }
   // タイヤの かべ（きついカーブの外がわ）
@@ -1076,9 +1155,11 @@ const bestStoreKey = () => courseKey === 'preset' ? 'apex.best' : 'apex.best.' +
 function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
 function loadBest() { try { bestLap = parseFloat(localStorage.getItem(bestStoreKey()) || '0') || 0; } catch (e) { bestLap = 0; } renderBest(); }
 function ensureCourse() {
-  const key = courseSel === 'custom' && customCourse ? 'c' + hashStr(JSON.stringify(customCourse.pts)) : 'preset';
+  const key = courseSel === 'custom' && customCourse ? 'c' + hashStr(JSON.stringify(customCourse.pts)) : BUILTIN[courseSel] ? courseSel : 'preset';
   if (builtKey === key) return;
-  TR = key === 'preset' ? PRESET_TR : buildTR(edSpline(customCourse.pts));
+  const B = BUILTIN[key];
+  TR = key === 'preset' ? PRESET_TR : B ? (B.tr || (B.tr = buildTR(edSpline(B.pts)))) : buildTR(edSpline(customCourse.pts));
+  applyTheme(B ? B.theme : 'forest');
   N = TR.N; buildCourse(); buildMini(); builtKey = key; courseKey = key; loadBest(); refreshMenuCar();
 }
 function edSpline(pts) {
@@ -1198,7 +1279,7 @@ function syncCourseUI() {
   $('customName').textContent = customCourse ? customCourse.name : '作る・えらぶ';
 }
 function closeEditor() { $('editor').classList.add('hidden'); $('edList').classList.add('hidden'); $('edShareBox').classList.add('hidden'); syncCourseUI(); }
-$('courseRow').querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { if (b.dataset.course === 'custom') { openEditor(); } else { courseSel = 'preset'; syncCourseUI(); } }));
+$('courseRow').querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { if (b.dataset.course === 'custom') { openEditor(); } else { courseSel = b.dataset.course; syncCourseUI(); } }));
 addEventListener('resize', () => { if (!$('editor').classList.contains('hidden')) { edSize(); edDraw(); } });
 $('edBack').addEventListener('click', closeEditor);
 $('edUndo').addEventListener('click', () => { const h = ED.hist.pop(); if (h) { ED.pts = JSON.parse(h); ED.sel = -1; edUpdate(); } else edToast('もう戻せません'); });
@@ -1431,7 +1512,7 @@ $('rpCamBtn').addEventListener('click', () => { repCam = (repCam + 1) % REP_CAMS
 $('rpSlow').addEventListener('click', () => { repSlow = !repSlow; $('rpSlow').classList.toggle('on', repSlow); });
 $('rpExit').addEventListener('click', endReplay);
 
-window.__apex = { bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
+window.__apex = { BUILTIN, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
