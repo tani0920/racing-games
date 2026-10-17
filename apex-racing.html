@@ -91,6 +91,9 @@
   #rpProg { height: 6px; background: rgba(255,255,255,.2); border-radius: 3px; margin-bottom: 10px; overflow: hidden; } #rpFill { height: 100%; width: 0; background: #ff5252; }
   .edb.on { background: rgba(0,170,255,.6); }
   #syncKey { flex: 1; min-width: 160px; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 8px 10px; font-size: 15px; font-family: inherit; -webkit-user-select: text; user-select: text; }
+  #bgmName { position: fixed; left: 18px; bottom: 112px; font-size: 16px; color: #ffe082; text-shadow: 0 2px 6px rgba(0,0,0,.6); opacity: 0; pointer-events: none; }
+  #bgmName.fadeout { animation: bgmfade 5s ease-out; }
+  @keyframes bgmfade { 0% { opacity: 0; transform: translateX(-20px); } 10% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -104,6 +107,7 @@
   <div id="times" class="panel"><div class="cur it" id="tCur">0:00.00</div><div class="sub">LAST <span id="tLast">--</span> ／ BEST <span id="tBest">--</span></div></div>
   <div id="sys"><button class="rb hidden" id="tiltBtn" title="センター合わせ">🧭</button><button class="rb hidden" id="tiltInvBtn" title="傾きの向きを反転">🔄</button><button class="rb" id="bgmBtn" title="BGM(M)">🎵</button><button class="rb" id="camBtn" title="カメラ(C)">🎥</button><button class="rb" id="pauseBtn" title="ポーズ(P)">⏸</button><button class="rb" id="homeBtn" title="メニュー">✕</button></div>
   <div id="miniWrap" class="panel"><canvas id="mini" width="340" height="340"></canvas></div>
+  <div id="bgmName" class="it"></div>
   <div id="drift" class="panel"><div class="t">DRIFT BOOST</div><div id="driftBar"><div id="driftFill"></div></div><div class="it" id="driftScore">0</div></div>
   <div id="speedo" class="panel it"><span id="gear">N</span><span id="kmh">0</span><span class="u">km/h</span><div id="rpm"><div id="rpmBar"></div></div></div>
   <div id="msg" class="it"></div>
@@ -690,17 +694,73 @@ function bgmSchedule(t, n) {
   if (st === 0) for (const m of ch) bTone(t, mf(m), STEP16 * 8, 'sawtooth', .07, 1400, rnd(-6, 6));   // パッド
   if (intense && (st === 0 || st === 6 || st === 10)) bTone(t, mf(ch[2] + 24), STEP16 * 2.5, 'square', .1, 5000);  // かんだかい メロ
 }
+/* ---- 追加のBGM（3曲）とランダム選曲 ---- */
+let bgmStep16 = STEP16, bgmTrack = 0, bgmLastTrack = -1;
+function bReese(t, f, d, peak) { for (const det of [-14, 14]) bTone(t, f, d, 'sawtooth', peak, 520, det); bTone(t, f / 2, d, 'sine', peak * .9, 200); }
+// ドラムンベース（172BPM・Dマイナー・ブレイクビーツ＋うねるベース）
+const DNB_CH = [[62, 65, 69], [58, 62, 65], [55, 58, 62], [57, 61, 64]], DNB_RT = [38, 34, 31, 33], DNB_MEL = [0, -1, -1, 2, -1, -1, 1, -1, -1, -1, 2, -1, 3, -1, -1, -1];
+function schedDnb(t, n) {
+  const bar = Math.floor(n / 16), st = n % 16, ch = DNB_CH[(bar >> 1) % 4], root = DNB_RT[(bar >> 1) % 4], S = bgmStep16, hot = bar % 8 >= 4;
+  if (st === 0 || st === 10) bKick(t);
+  if (st === 4 || st === 12) { bNoise(t, .2, 'bandpass', 2100, .65); bTone(t, 210, .09, 'triangle', .3, 2000); }
+  if (st === 7 || st === 15) bNoise(t, .06, 'bandpass', 2400, .16);
+  if (st % 2 === 0) bNoise(t, .035, 'highpass', 8500, st % 4 === 2 ? .22 : .12); else if (hot) bNoise(t, .02, 'highpass', 10000, .08);
+  if (st === 0) bReese(t, mf(root), S * 6, .32); if (st === 6) bReese(t, mf(root + 12), S * 2, .26); if (st === 10) bReese(t, mf(root), S * 5, .3);
+  if (st === 0 && bar % 2 === 0) for (const m of ch) bTone(t, mf(m), S * 30, 'triangle', .05, 1200, rnd(-5, 5));
+  const mi = DNB_MEL[st]; if (hot && mi >= 0) { const note = ch[mi % 3] + 12 * (mi >= 3 ? 1 : 0) + 12; bTone(t, mf(note), S * 2.2, 'square', .08, 2600); bTone(t + S * 3, mf(note), S * 1.5, 'square', .03, 2000); }
+}
+// シンセウェーブ（112BPM・Eマイナー・80年代風）
+const SW_CH = [[64, 67, 71], [60, 64, 67], [67, 71, 74], [62, 66, 69]], SW_RT = [40, 36, 43, 38], SW_MEL = [[0, 2, 1], [2, 1, 0], [1, 2, 2], [0, 1, 2]];
+function schedSynth(t, n) {
+  const bar = Math.floor(n / 16), st = n % 16, ch = SW_CH[bar % 4], root = SW_RT[bar % 4], S = bgmStep16, hot = bar % 8 >= 4;
+  if (st % 4 === 0) bKick(t);
+  if (st === 4 || st === 12) { bNoise(t, .45, 'bandpass', 1500, .55); bTone(t, 180, .14, 'triangle', .3, 1800); }
+  if (st % 4 === 2) bNoise(t, .06, 'highpass', 7000, .16);
+  bTone(t, mf(root + (st % 2 ? 12 : 0)), S * .8, 'sawtooth', .38, 650);
+  if (st === 0) for (const m of ch) for (const det of [-9, 9]) bTone(t, mf(m), S * 15, 'sawtooth', .045, 1700, det);
+  if (st % 2 === 0) { const k = (st >> 1) % 4, note = (k === 3 ? ch[1] : ch[k]) + 12; bTone(t, mf(note), S * 1.6, 'square', .05, 2400); }
+  if (hot && (st === 0 || st === 6 || st === 8)) { const mel = SW_MEL[bar % 4][st === 0 ? 0 : st === 6 ? 1 : 2], note = ch[mel] + 12; bTone(t, mf(note), S * (st === 8 ? 7 : 5), 'sawtooth', .1, 3200, -5); bTone(t, mf(note), S * (st === 8 ? 7 : 5), 'sawtooth', .07, 3200, 6); }
+}
+// 8ビット（150BPM・Cメジャー・ゲーム機風）
+const CH_CH = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]], CH_RT = [48, 45, 41, 43];
+const CH_MEL = [[12, -1, 7, -1, 4, -1, 7, 9, 12, -1, 16, -1, 14, 12, 7, -1], [16, -1, 14, 12, 14, -1, 7, -1, 9, -1, 12, -1, 14, -1, -1, -1]];
+function schedChip(t, n) {
+  const bar = Math.floor(n / 16), st = n % 16, ch = CH_CH[bar % 4], root = CH_RT[bar % 4], S = bgmStep16, hot = bar % 8 >= 4;
+  if (st % 8 === 0 || (hot && st === 10)) { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'square'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(40, t + .08); o.connect(g); g.connect(bgmMaster); bgmEnv(o, g, t, .002, .1, .35); }
+  if (st % 8 === 4) bNoise(t, .09, 'highpass', 3000, .4);
+  if (st % 2 === 0) bNoise(t, .02, 'highpass', 9000, .12);
+  if (st % 2 === 0) bTone(t, mf(root + (st % 4 === 2 ? 12 : 0)), S * 1.7, 'triangle', .55, 6000);
+  bTone(t, mf(ch[st % 3] + 24), S * .7, 'square', .045, 7000);
+  const m = CH_MEL[hot ? 1 : 0][st]; if (m >= 0) bTone(t, mf(root + 12 + m + (root < 45 ? 12 : 0)), S * 1.8, 'square', .11, 7000);
+}
+const BGM_TRACKS = [
+  { name: 'ユーロビート', bpm: 156, g: 1, fn: bgmSchedule },
+  { name: 'ドラムンベース', bpm: 172, g: 1.15, fn: schedDnb },
+  { name: 'シンセウェーブ', bpm: 112, g: 1.25, fn: schedSynth },
+  { name: '8ビット', bpm: 150, g: 1.65, fn: schedChip }
+];
+function pickBgm() { let k; do { k = Math.floor(Math.random() * BGM_TRACKS.length); } while (k === bgmLastTrack && BGM_TRACKS.length > 1); bgmLastTrack = k; bgmTrack = k; bgmStep16 = 60 / BGM_TRACKS[k].bpm / 4; showBgmName(); }
+function showBgmName() { const e = $('bgmName'); if (!e) return; e.textContent = '♪ ' + BGM_TRACKS[bgmTrack].name; e.classList.remove('fadeout'); void e.offsetWidth; e.classList.add('fadeout'); }
+// 確認用：曲を オフラインで 書き出して 音量を はかる
+async function bgmRender(k, sec) {
+  const save = [ac, bgmMaster, noiseBuf, bgmStep16], oc = new OfflineAudioContext(1, 44100 * sec, 44100);
+  const nb = oc.createBuffer(1, 44100 * 2, 44100), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  ac = oc; noiseBuf = nb; bgmMaster = oc.createGain(); bgmMaster.gain.value = .16 * BGM_TRACKS[k].g; bgmMaster.connect(oc.destination); bgmStep16 = 60 / BGM_TRACKS[k].bpm / 4;
+  try { for (let n = 0, t = 0; t < sec - .5; n++, t += bgmStep16) BGM_TRACKS[k].fn(t + .05, n); } finally { [ac, bgmMaster, noiseBuf, bgmStep16] = save; }
+  const buf = await oc.startRendering(), x = buf.getChannelData(0); let s = 0, p = 0; for (let i = 0; i < x.length; i++) { s += x[i] * x[i]; p = Math.max(p, Math.abs(x[i])); }
+  return { name: BGM_TRACKS[k].name, rms: +Math.sqrt(s / x.length).toFixed(4), peak: +p.toFixed(3) };
+}
 function bgmTick() {
   if (!ac || !bgmMaster) return;
-  while (bgmNext < ac.currentTime + .18) { bgmSchedule(bgmNext, bgmStepN); bgmNext += STEP16; bgmStepN++; }
+  while (bgmNext < ac.currentTime + .18) { BGM_TRACKS[bgmTrack].fn(bgmNext, bgmStepN); bgmNext += bgmStep16; bgmStepN++; }
 }
 function bgmStart() {
-  if (!ac || !noiseBuf) return; bgmStop();
-  bgmMaster = ac.createGain(); bgmMaster.gain.value = bgmOn ? .16 : 0; bgmMaster.connect(ac.destination);
+  if (!ac || !noiseBuf) return; bgmStop(); pickBgm();
+  bgmMaster = ac.createGain(); bgmMaster.gain.value = bgmOn ? .16 * BGM_TRACKS[bgmTrack].g : 0; bgmMaster.connect(ac.destination);
   bgmStepN = 0; bgmNext = ac.currentTime + .1; bgmTimer = setInterval(bgmTick, 30);
 }
 function bgmStop() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; if (bgmMaster) { const m = bgmMaster; try { m.gain.setTargetAtTime(0, ac.currentTime, .15); } catch (e) {} setTimeout(() => { try { m.disconnect(); } catch (e) {} }, 800); bgmMaster = null; } }
-function bgmLevel(v) { if (bgmMaster) bgmMaster.gain.setTargetAtTime(bgmOn ? v : 0, ac.currentTime, .1); }
+function bgmLevel(v) { if (bgmMaster) bgmMaster.gain.setTargetAtTime(bgmOn ? v * BGM_TRACKS[bgmTrack].g : 0, ac.currentTime, .1); }
 function toggleBgm() { bgmOn = !bgmOn; $('bgmBtn').style.opacity = bgmOn ? 1 : .4; bgmLevel(.16); try { localStorage.setItem('apex.bgm', bgmOn ? '1' : '0'); } catch (e) {} }
 try { bgmOn = localStorage.getItem('apex.bgm') !== '0'; } catch (e) {}
 
@@ -1371,7 +1431,7 @@ $('rpCamBtn').addEventListener('click', () => { repCam = (repCam + 1) % REP_CAMS
 $('rpSlow').addEventListener('click', () => { repSlow = !repSlow; $('rpSlow').classList.toggle('on', repSlow); });
 $('rpExit').addEventListener('click', endReplay);
 
-window.__apex = { FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
+window.__apex = { bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
