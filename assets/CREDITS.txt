@@ -3,3 +3,5 @@
 - 空・景色・光: Alps Field（森）, Belfast Sunset Pure Sky（市街地）, Fish Hoek Beach（海沿い）
 - 木: Island Tree 01 / Island Tree 02 / Fir Sapling の3Dモデルを、ゲーム用に写真（板）へ焼き付けたもの
 ゲーム用に縮小・圧縮しています。
+
+- 車（GTクーペ）: ChatGPTで描いた絵を TRELLIS（MITライセンス）で3D化したもの

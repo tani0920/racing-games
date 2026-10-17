@@ -234,6 +234,7 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
@@ -674,6 +675,7 @@ function makeWheel(r, w, side) {
   return g;
 }
 function makeCar(si, colorHex) {
+  if (GLB_CARS[si]) return makeCarGLB(si, colorHex);
   if (CAR_SPECS[si].build) return CAR_SPECS[si].build(CAR_SPECS[si], colorHex);
   const sp = CAR_SPECS[si], root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const paint = new THREE.MeshPhysicalMaterial({ color: colorHex, roughness: .28, metalness: .55, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: 1.2 });
@@ -851,6 +853,70 @@ CAR_SPECS.push(
   { name: 'TCR', W: 2.0, wr: .35, wx: .9, def: 1, build: buildTCR, sc: { accel: 9.4, power: 294, drag: .0009, steerRate: 2.25, latG: 18.5, grip: 8.5, gripHB: 1.4 } },
   { name: 'ROADSTER', W: 1.86, wr: .33, wx: .8, def: 1, build: buildRoadster, sc: { accel: 9.8, power: 302, drag: .00085, steerRate: 2.3, latG: 20, grip: 9.5, gripHB: 1.5 } }
 );
+
+/* =============== 本物らしい車（AIで作った3Dモデル .glb） =============== */
+const GLB_CARS = {};   // 名前 → { geo, map } （読み込み済みのデータ）
+function loadCarGLB(si, url, fix) {
+  if (!THREE.GLTFLoader) return;
+  new THREE.GLTFLoader().load(url, g => {
+    let src = null; g.scene.traverse(o => { if (o.isMesh && !src) src = o; }); if (!src) return;
+    const geo = src.geometry.clone(); geo.applyMatrix4(src.matrixWorld);
+    if (fix && fix.cut) {   // 崩れた部分（ウイングなど）を けずる
+      const p = geo.attributes.position, idx = geo.index.array, keep = [];
+      for (let t = 0; t < idx.length; t += 3) { let cz = 0, cy = 0; for (let k = 0; k < 3; k++) { cz += p.getZ(idx[t + k]); cy += p.getY(idx[t + k]); } if (!fix.cut(cz / 3, cy / 3)) keep.push(idx[t], idx[t + 1], idx[t + 2]); }
+      geo.setIndex(keep);
+    }
+    geo.computeBoundingBox(); const bb = geo.boundingBox, s = (fix && fix.length || 4.6) / (bb.max.z - bb.min.z);
+    geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2); geo.scale(s, s, s);
+    geo.computeVertexNormals(); geo.computeBoundingBox();
+    const map = src.material.map; if (map) { map.encoding = THREE.sRGBEncoding; map.anisotropy = 8; }
+    GLB_CARS[si] = { geo, map, scale: s, fix }; refreshMenuCar();
+  });
+}
+// 赤い塗装の部分だけ、選んだ色に ぬりかえる（窓やタイヤ、黒い部品は そのまま）
+function glbPaint(map, colorHex) {
+  const m = new THREE.MeshPhysicalMaterial({ map, roughness: .34, metalness: .3, clearcoat: .9, clearcoatRoughness: .1, envMapIntensity: 1.1 });
+  const c = new THREE.Color(colorHex), hsl = {}; c.getHSL(hsl);
+  const red = hsl.s > .5 && (hsl.h < .03 || hsl.h > .97);
+  m.userData.u = { uHue: { value: hsl.h }, uSat: { value: hsl.s }, uLig: { value: hsl.l }, uOn: { value: red ? 0 : 1 } };
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, m.userData.u);
+    sh.fragmentShader = sh.fragmentShader.replace('void main() {', `uniform float uHue, uSat, uLig, uOn;
+      vec3 rgb2hsl(vec3 c) { float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), l = (mx + mn) * .5, d = mx - mn, h = 0., s = 0.;
+        if (d > 1e-5) { s = l > .5 ? d / (2. - mx - mn) : d / (mx + mn); if (mx == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6. : 0.); else if (mx == c.g) h = (c.b - c.r) / d + 2.; else h = (c.r - c.g) / d + 4.; h /= 6.; } return vec3(h, s, l); }
+      float h2r(float p, float q, float t) { t = fract(t); if (t < 1. / 6.) return p + (q - p) * 6. * t; if (t < .5) return q; if (t < 2. / 3.) return p + (q - p) * (2. / 3. - t) * 6.; return p; }
+      vec3 hsl2rgb(vec3 c) { if (c.y < 1e-4) return vec3(c.z); float q = c.z < .5 ? c.z * (1. + c.y) : c.z + c.y - c.z * c.y, p = 2. * c.z - q; return vec3(h2r(p, q, c.x + 1. / 3.), h2r(p, q, c.x), h2r(p, q, c.x - 1. / 3.)); }
+      void main() {`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      if (uOn > .5) { vec3 sc = pow(max(diffuseColor.rgb, 0.), vec3(1. / 2.2)), hl = rgb2hsl(sc);
+        float hd = min(hl.x, 1. - hl.x), w = smoothstep(.25, .45, hl.y) * (1. - smoothstep(.05, .1, hd));
+        vec3 nh = vec3(uHue, uSat * min(1., hl.y * 1.3), clamp(uLig * (hl.z / .4), 0., .95)); vec3 nc = pow(hsl2rgb(nh), vec3(2.2));
+        diffuseColor.rgb = mix(diffuseColor.rgb, nc, w); }`);
+  };
+  m.customProgramCacheKey = () => 'glbpaint';
+  return m;
+}
+function makeCarGLB(si, colorHex) {
+  const G = GLB_CARS[si], sp = CAR_SPECS[si], root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const paint = glbPaint(G.map, colorHex), mesh = new THREE.Mesh(G.geo, paint); mesh.castShadow = !LOW; mesh.receiveShadow = true; body.add(mesh);
+  if (G.fix && G.fix.addParts) G.fix.addParts(body, colorHex);
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x7a0000, emissive: 0xff1100, emissiveIntensity: .7 });
+  return { root, body, wheels: [], fronts: [], tailMat, spec: sp, paint };
+}
+// GTクーペ：けずったウイングの代わりに 左右対称のウイングと トランクのふたを付ける（モデルの長さ1あたりの位置）
+const GT_FIX = {
+  length: 4.6,
+  cut: (z, y) => z < -0.40 && y > 0.03,
+  addParts(body, colorHex) {
+    const k = 4.6, base = .14 * k, P = paintOf(colorHex), B = new THREE.MeshStandardMaterial({ color: 0x111316, roughness: .5 });
+    const add = (w, h, d, mat, x, y, z, rx) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w * k, h * k, d * k), mat); m.position.set(x * k, base + y * k, z * k); if (rx) m.rotation.x = rx; m.castShadow = !LOW; body.add(m); };
+    add(.40, .012, .095, P, 0, .033, -.452, -.06);             // トランクのふた
+    add(.44, .008, .07, P, 0, .085, -.455, -.12);              // ウイング
+    for (const s of [-1, 1]) { add(.008, .05, .03, B, s * .12, .058, -.445); add(.004, .03, .08, P, s * .222, .085, -.455); }
+  }
+};
+CAR_SPECS[0].glb = 'cars/gt_coupe.glb'; CAR_SPECS[0].glbFix = GT_FIX;
+loadCarGLB(0, CAR_SPECS[0].glb, GT_FIX);
 
 /* =============== ゲームじょうたい =============== */
 const players = []; let player = null, ais = [];
