@@ -132,6 +132,8 @@
     #msg { top: 30%; font-size: clamp(32px, 9vh, 60px); }
     #rpTop { top: 8px; font-size: 15px; padding: 4px 12px; } #rpBar { bottom: 8px; padding: 6px 10px; }
   }
+  #tiltDlg { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.6); }
+  #tiltDlg.hidden { display: none !important; }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -188,6 +190,12 @@
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
 </div>
 
+<div id="tiltDlg" class="hidden"><div class="panel" style="padding:18px 20px;max-width:440px;text-align:center;line-height:1.7">
+  <div class="it" style="font-size:22px;color:#ffca28;margin-bottom:6px">傾きハンドルが使えません</div>
+  <div style="font-size:15px">さっきの確認で「キャンセル」が押されたため、iPhone・iPadが傾きセンサーを止めています。<br>下のボタンで読み込み直して、もう一度「START」→<b>「許可」</b>を押してください。</div>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><button class="edb go" id="tiltRetry">🔄 読み込み直して許可する</button><button class="edb" id="tiltUseBtn">ボタン操作で始める</button></div>
+  <div style="font-size:12px;color:#90a4ae;margin-top:10px">それでも確認が出ないときは、アプリ（またはSafari）を上にスワイプして完全に閉じてから開き直してください。</div>
+  <button class="edb" id="tiltDlgClose" style="margin-top:10px">閉じる</button></div></div>
 <div id="result" class="hidden allow">
   <div id="resBox" class="panel"><h2 class="it" id="resTitle">FINISH</h2><table id="resTable"></table></div>
   <div class="row"><button class="big-btn it" id="replayBtn" style="background:linear-gradient(#26a69a,#00796b);box-shadow:0 6px 0 #004d40">🎬 リプレイ</button><button class="big-btn it" id="again">もう一度</button><button class="big-btn it" id="toMenu" style="background:linear-gradient(#546e7a,#37474f);box-shadow:0 6px 0 #1c262b">メニュー</button></div>
@@ -1162,15 +1170,23 @@ async function enableTilt() {
 /* =============== UI =============== */
 { const row = $('colors'); CAR_COLORS.forEach((c, i) => { const b = document.createElement('div'); b.className = 'sw' + (i === 0 ? ' sel' : ''); b.style.background = c; b.addEventListener('click', () => { selColor = i; row.querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === i)); refreshMenuCar(); }); row.appendChild(b); }); }
 function bindGroup(id, attr, fn) { $(id).querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { $(id).querySelectorAll('.opt').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); fn(b.dataset[attr]); })); }
-bindGroup('steerRow', 'steer', v => steerMode = v); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('diffRow', 'diff', v => { selDiff = v; try { localStorage.setItem('apex.diff', v); } catch (e) {} }); $('diffRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.diff === selDiff)); bindGroup('laps', 'laps', v => selLaps = +v);
+bindGroup('steerRow', 'steer', v => { steerMode = v; try { localStorage.setItem('apex.steer', v); } catch (e) {} }); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('diffRow', 'diff', v => { selDiff = v; try { localStorage.setItem('apex.diff', v); } catch (e) {} }); $('diffRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.diff === selDiff)); bindGroup('laps', 'laps', v => selLaps = +v);
 function renderBest() { $('best').textContent = bestLap ? '🏆 ベストラップ ' + fmt(bestLap) : ''; } renderBest();
 $('go').addEventListener('click', async () => {
   audioInit(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
-  if (steerMode === 'tilt') { const ok = await enableTilt(); if (!ok) { steerMode = 'btn'; } }
+  if (steerMode === 'tilt') { const ok = await enableTilt(); if (!ok) { $('tiltDlg').classList.remove('hidden'); return; } }
   startRace();
   if (steerMode === 'tilt') setTimeout(() => { if (!tiltHas) { showMsg('傾きセンサーが使えません', '#ff8a80'); steerMode = 'btn'; applyTiltUI(); } }, 1500);
 });
 $('again').addEventListener('click', startRace);
+// 傾きの許可を キャンセルしたとき：iPhone/iPadは 読み込み直さないと もう一度聞いてくれない
+function syncSteerUI() { $('steerRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.steer === steerMode)); }
+try { const sm = localStorage.getItem('apex.steer'); if (sm === 'tilt' || sm === 'btn') steerMode = sm; } catch (e) {}
+syncSteerUI();
+$('tiltRetry').addEventListener('click', () => { try { localStorage.setItem('apex.steer', 'tilt'); localStorage.setItem('apex.tiltRetry', '1'); } catch (e) {} location.reload(); });
+$('tiltUseBtn').addEventListener('click', () => { $('tiltDlg').classList.add('hidden'); steerMode = 'btn'; try { localStorage.setItem('apex.steer', 'btn'); } catch (e) {} syncSteerUI(); $('go').click(); });
+$('tiltDlgClose').addEventListener('click', () => $('tiltDlg').classList.add('hidden'));
+try { if (localStorage.getItem('apex.tiltRetry') === '1') { localStorage.removeItem('apex.tiltRetry'); setTimeout(() => menuNote('「START」を押すと、傾きの許可を聞かれます。今度は「許可」を押してね', true), 300); } } catch (e) {}
 function applyTiltUI() { const t = steerMode === 'tilt';
   const gl = $('tL').parentNode, gr = $('tGas').parentNode;
   if (t) gl.appendChild($('tHBcol')); else gr.insertBefore($('tHBcol'), $('tGas')); $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
