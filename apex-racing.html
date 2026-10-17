@@ -162,7 +162,7 @@
   <div id="edHelp">タップ＝点をおく　点をドラッグ＝動かす　空き地をドラッグ＝画面移動　ピンチ＝拡大縮小</div>
   <div id="edToast" class="panel hidden"></div>
   <div id="edList" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:8px">保存したコース</div><div id="edListBody"></div><button class="edb" id="edListClose" style="margin-top:10px">閉じる</button></div>
-  <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">ほかのデバイス・友だちに送る</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="edb go" id="edSendOne">📤 このコースをリンクで送る</button><button class="edb" id="edSendAll">📦 保存した全コースを送る</button></div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">送ったリンクを別のiPadやスマホで開くと、コースが自動で保存されます。ホーム画面のアイコンから遊んでいる場合は、届いたリンクやコードを下に貼って「読み込む」を押してください。</div><textarea id="edCode" rows="5"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
+  <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">ほかのデバイス・友だちに送る</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="edb go" id="edSendOne">📤 このコースをリンクで送る</button><button class="edb" id="edSendAll">📦 保存した全コースを送る</button></div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">送ったリンクを別のiPadやスマホで開くと、コースが自動で保存されます。ホーム画面のアイコンから遊んでいる場合は、届いたリンクやコードを下に貼って「読み込む」を押してください。</div><textarea id="edCode" rows="5" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -996,16 +996,28 @@ $('edLoad').addEventListener('click', () => {
 $('edListClose').addEventListener('click', () => $('edList').classList.add('hidden'));
 $('edShare').addEventListener('click', () => {
   const body = JSON.stringify({ n: $('edName').value.trim(), p: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) });
-  $('edCode').value = ED.pts.length >= 3 ? 'APEX1:' + btoa(unescape(encodeURIComponent(body))) : ''; $('edShareBox').classList.remove('hidden');
+  $('edCode').value = ED.pts.length >= 3 ? 'APEX2:' + ($('edName').value.trim() || 'マイコース').replace(/[|\n]/g, '').slice(0, 20) + '|' + ED.pts.map(p => Math.round(p[0]) + ',' + Math.round(p[1])).join(';') : ''; $('edShareBox').classList.remove('hidden');
 });
 $('edShareClose').addEventListener('click', () => $('edShareBox').classList.add('hidden'));
 $('edCopy').addEventListener('click', async () => { const t = $('edCode').value; try { await navigator.clipboard.writeText(t); edToast('コードをコピーしました'); } catch (e) { $('edCode').select(); edToast('選択しました。長押しでコピーしてね'); } });
+// コードの読み取り（大文字小文字・全角・空白・改行のゆれに強くする）
+function parseCourseCode(raw) {
+  let t = String(raw).normalize('NFKC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+  const m2 = t.match(/apex\s*2\s*:?\s*([\s\S]*)/i);
+  if (m2) {
+    const body = m2[1], bar = body.lastIndexOf('|'), name = bar >= 0 ? body.slice(0, bar).trim() : '';
+    const pts = (bar >= 0 ? body.slice(bar + 1) : body).replace(/\s+/g, '').split(';').filter(Boolean).map(q => q.split(',').map(Number));
+    return { n: name, p: pts };
+  }
+  t = t.replace(/^apex\s*1\s*:?/i, '').replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '=';
+  return JSON.parse(decodeURIComponent(escape(atob(t))));
+}
 $('edImport').addEventListener('click', () => {
   const raw = $('edCode').value.trim();
   if (/courses=/.test(raw)) { try { const n = importCourses(raw); const l = edStore(); const c = customCourse; if (c) edSet(c.pts, c.name); $('edShareBox').classList.add('hidden'); edToast(n > 0 ? `${n}個のコースを保存しました` : 'もう保存されているコースです'); } catch (e) { edToast('リンクが正しくありません'); } return; }
-  try { let t = raw; if (t.startsWith('APEX1:')) t = t.slice(6); const o = JSON.parse(decodeURIComponent(escape(atob(t)))); if (!Array.isArray(o.p) || o.p.length < 3 || o.p.length > 200 || !o.p.every(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]))) throw 0;
+  try { const o = parseCourseCode(raw); if (!validPts(o.p)) throw 0;
     edSet(o.p.map(q => [+q[0], +q[1]]), String(o.n || 'もらったコース').slice(0, 20)); $('edShareBox').classList.add('hidden'); edToast('コードから読み込みました');
-  } catch (e) { edToast('コードが正しくありません'); }
+  } catch (e) { edToast('コードが読み取れません。送る側で「🔗 コード」を開き直して新しいコードを送ってね'); }
 });
 $('edRun').addEventListener('click', () => {
   if (!ED.an || !ED.an.ok) { edToast(ED.an ? ED.an.msg : ''); return; }
