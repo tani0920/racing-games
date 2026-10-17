@@ -181,6 +181,7 @@
   <div class="row" id="diffRow">
     <button class="opt" data-diff="easy">やさしい<small>AIがゆっくり</small></button><button class="opt" data-diff="normal">ふつう</button><button class="opt" data-diff="hard">むずかしい<small>AIが本気</small></button>
   </div>
+  <div class="row" id="qualRow"><button class="opt" data-q="high">画質：きれい<small>写真の質感・光の表現</small></button><button class="opt" data-q="low">画質：かるい<small>動きがカクつくときに</small></button></div>
   <div class="row" id="laps">
     <button class="opt sel" data-laps="3">3 周</button><button class="opt" data-laps="5">5 周</button><button class="opt" data-laps="1">1 周</button>
   </div>
@@ -232,6 +233,13 @@
   <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">ほかのデバイス・友だちに送る</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="edb go" id="edSendOne">📤 このコースをリンクで送る</button><button class="edb" id="edSendAll">📦 保存した全コースを送る</button></div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">送ったリンクを別のiPadやスマホで開くと、コースが自動で保存されます。ホーム画面のアイコンから遊んでいる場合は、届いたリンクやコードを下に貼って「読み込む」を押してください。</div><textarea id="edCode" rows="5" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script>
 (() => {
 'use strict';
@@ -240,7 +248,8 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const lerp = (a, b, t) => a + (b - a) * t;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
-const LOW = /[?&]low/.test(location.search);
+const QSET = (() => { try { return localStorage.getItem('apex.quality'); } catch (e) { return null; } })();
+const LOW = /[?&]low/.test(location.search) || QSET === 'low' || (!QSET && Math.min(screen.width, screen.height) < 500);
 const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 /* =============== コース生成（入り組んだ周回コース） =============== */
@@ -385,7 +394,73 @@ function applyTheme(name) {
   grassMat.map = groundTex(T.ground); grassMat.needsUpdate = true; ground.visible = T.scenery !== 'beach'; sunSpr.material.color.set(T.sunSpr);
   skyColors(envSky.geometry, ...T.env); envSun.position.copy(SUN_DIR).multiplyScalar(40);
   const pm = new THREE.PMREMGenerator(renderer), old = scene.environment; scene.environment = pm.fromScene(envScene, .03).texture; pm.dispose(); if (old) old.dispose();
+  hqApply(name);
 }
+/* =============== きれいモード：写真の質感・本物の空と光・光のにじみ =============== */
+const HQ = !LOW;
+const texLoader = new THREE.TextureLoader(), maxAniso = renderer.capabilities.getMaxAnisotropy(), photoCache = {};
+function photo(name, srgb, rx, ry) {
+  const key = name + '|' + rx + '|' + ry;
+  if (!photoCache[key]) { const t = texLoader.load('assets/' + name); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = maxAniso; if (srgb) t.encoding = THREE.sRGBEncoding; t.repeat.set(rx, ry); photoCache[key] = t; }
+  return photoCache[key];
+}
+// 地面（1枚 = 20m）と 道路（1枚 = 4.5m）
+function hqStripMat(kind, wMeters, vUnit) { return new THREE.MeshStandardMaterial({ color: (GROUND_TINT || {})[kind] || 0xffffff, map: photo(kind + '_diff.jpg', true, wMeters / 20, vUnit / 20), normalMap: photo(kind + '_nor.jpg', false, wMeters / 20, vUnit / 20), roughness: 1 }); }
+const GROUND_PHOTO = { grass: 'grass', sand: 'sand', concrete: 'concrete' }, GROUND_TINT = { grass: 0xa9c98c, sand: 0xffffff, concrete: 0xb8b8b8 };
+function hqGround(kind) {
+  const k = GROUND_PHOTO[kind] || 'grass'; grassMat.map = photo(k + '_diff.jpg', true, 300, 300); grassMat.normalMap = photo(k + '_nor.jpg', false, 300, 300);
+  grassMat.normalScale.set(.9, .9); grassMat.color.set(GROUND_TINT[k]); grassMat.needsUpdate = true;
+}
+const roadMat = new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: .92, metalness: 0 });
+const lineMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: .55 });
+if (HQ) { roadMat.map = photo('road_diff.jpg', true, 4, 4); roadMat.normalMap = photo('road_nor.jpg', false, 4, 4); roadMat.roughnessMap = photo('road_rough.jpg', false, 4, 4); roadMat.roughness = 1; roadMat.normalScale.set(.7, .7); roadMat.color.set(0x7c7f86); }
+// 本物の空（360°写真）と、その空から来る光・はんしゃ
+const HQ_SKY = { forest: 'forest', city: 'city', beach: 'beach' }, hqData = {}; let hqReq = 0, skyPhotoMat = null;
+function loadSkyData(k) {
+  if (hqData[k]) return hqData[k];
+  return hqData[k] = new Promise(resolve => {
+    const out = {}; let left = 2; const fin = () => { if (--left === 0) resolve(out); };
+    texLoader.load('assets/sky_' + k + '.jpg', t => { t.encoding = THREE.sRGBEncoding; out.sky = t;
+      try { const c = document.createElement('canvas'), w = 256, h = 128; c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(t.image, 0, 0, w, h);
+        const d = g.getImageData(0, Math.floor(h * .47), w, 4).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4;
+        out.fog = new THREE.Color().setRGB(r / n / 255, gg / n / 255, b / n / 255).convertSRGBToLinear(); } catch (e) {}
+      fin(); }, undefined, fin);
+    if (!THREE.RGBELoader) { fin(); return; }
+    new THREE.RGBELoader().setDataType(THREE.FloatType).load('assets/env_' + k + '.hdr', t => {
+      t.mapping = THREE.EquirectangularReflectionMapping; out.env = t;
+      const img = t.image, d = img.data, W = img.width, Hh = img.height, st = d.length / (W * Hh); let best = -1, bi = 0;
+      for (let i = 0; i < W * Hh; i++) { const L = d[i * st] * .2126 + d[i * st + 1] * .7152 + d[i * st + 2] * .0722; if (L > best) { best = L; bi = i; } }
+      const u = (bi % W + .5) / W, v = 1 - (Math.floor(bi / W) + .5) / Hh, ph = (u - .5) * Math.PI * 2, th = (v - .5) * Math.PI;
+      out.sun = new THREE.Vector3(Math.cos(th) * Math.cos(ph), Math.max(.08, Math.sin(th)), Math.cos(th) * Math.sin(ph)).normalize();
+      fin(); }, undefined, fin);
+  });
+}
+function hqApply(name) {
+  if (!HQ) return; const req = ++hqReq, k = HQ_SKY[name] || 'forest'; hqGround(THEMES[name] ? THEMES[name].ground : 'grass');
+  loadSkyData(k).then(o => {
+    if (req !== hqReq) return;
+    if (o.sky) { if (!skyPhotoMat) skyPhotoMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }); skyPhotoMat.map = o.sky; skyPhotoMat.needsUpdate = true; sky.material = skyPhotoMat; sky.scale.set(1, 1, -1); clouds.forEach(c => c.visible = false); }
+    if (o.fog) scene.fog.color.copy(o.fog);
+    if (o.env) { const pm = new THREE.PMREMGenerator(renderer), old = scene.environment; scene.environment = pm.fromEquirectangular(o.env).texture; pm.dispose(); if (old) old.dispose(); hemi.intensity = THEME.hemi[2] * .3; }
+    if (o.sun) { SUN_DIR.copy(o.sun); sunSpr.material.opacity = .45; }
+  });
+}
+// 光のにじみ（ブルーム）と 周辺の減光
+let composer = null;
+function setupPost() {
+  if (!HQ || !THREE.EffectComposer || !THREE.UnrealBloomPass || !THREE.RenderPass || !THREE.ShaderPass) return;
+  const sz = renderer.getDrawingBufferSize(new THREE.Vector2()), opt = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, encoding: THREE.sRGBEncoding };
+  const rt = renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget ? new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, opt) : new THREE.WebGLRenderTarget(sz.x, sz.y, opt);
+  composer = new THREE.EffectComposer(renderer, rt);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .28, .55, .92));
+  composer.addPass(new THREE.ShaderPass({ uniforms: { tDiffuse: { value: null } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float v = smoothstep(.95, .3, length(vUv - .5)); c.rgb *= mix(.72, 1.0, v); c.rgb = mix(vec3(dot(c.rgb, vec3(.299,.587,.114))), c.rgb, 1.08); gl_FragColor = c; }' }));
+  addEventListener('resize', () => { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight); });
+  composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight);
+}
+function draw() { if (composer) composer.render(); else renderer.render(scene, camera); }
 // 夕焼けの市街地：ビル・街灯
 const winTexs = [];
 function cityWinTex(k) {
@@ -415,7 +490,7 @@ function buildCity(near, BX, BZ, BR, m4) {
 }
 // 海沿い：砂浜・海・ヤシの木
 function buildBeach(near, BX, BZ, BR, m4) {
-  const sand = new THREE.MeshStandardMaterial({ color: 0x6f5838, roughness: 1 });
+  const sand = HQ ? hqStripMat('sand', WALL_D + 70 - hw, 20) : new THREE.MeshStandardMaterial({ color: 0x6f5838, roughness: 1 });
   makeStrip(i => off(i, WALL_D + 70, -.1), i => off(i, hw, -.1), 20, sand); makeStrip(i => off(i, -hw, -.1), i => off(i, -WALL_D - 70, -.1), 20, sand);
   const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0x06375e, roughness: .35, metalness: 0, envMapIntensity: .5 })); sea.rotation.x = -Math.PI / 2; sea.position.set(BX, -.6, BZ); sea.receiveShadow = true; courseGroup.add(sea);
   for (let i = 0; i < 10; i++) { const a = rnd(0, 6.283), r = BR + rnd(500, 900), h = rnd(40, 110), m = new THREE.Mesh(new THREE.ConeGeometry(rnd(150, 260), h, 7), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(.3, .35, rnd(.28, .38)), roughness: 1, flatShading: true })); m.position.set(BX + Math.cos(a) * r, h / 2 - 2, BZ + Math.sin(a) * r); courseGroup.add(m); }
@@ -439,9 +514,11 @@ function buildCourse() {
   if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   courseGroup = new THREE.Group(); scene.add(courseGroup);
   // まっすぐ上に向く法線を保証するため 左→右 の順
-  makeStrip(i => off(i, hw, 0), i => off(i, -hw, 0), 18, new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: .92, metalness: 0 }));
-  makeStrip(i => off(i, hw + 4, -.03), i => off(i, hw, -.03), 8, new THREE.MeshStandardMaterial({ color: THEME.runoff, roughness: 1 }));
-  makeStrip(i => off(i, -hw, -.03), i => off(i, -hw - 4, -.03), 8, new THREE.MeshStandardMaterial({ color: THEME.runoff, roughness: 1 }));
+  makeStrip(i => off(i, hw, 0), i => off(i, -hw, 0), 18, roadMat);
+  if (HQ) { makeStrip(i => off(i, hw - .35, .015), i => off(i, hw - .6, .015), 8, lineMat); makeStrip(i => off(i, -hw + .6, .015), i => off(i, -hw + .35, .015), 8, lineMat); }
+  const runMat = HQ ? hqStripMat(GROUND_PHOTO[THEME.ground] || 'grass', 4, 8) : new THREE.MeshStandardMaterial({ color: THEME.runoff, roughness: 1 });
+  makeStrip(i => off(i, hw + 4, -.03), i => off(i, hw, -.03), 8, runMat);
+  makeStrip(i => off(i, -hw, -.03), i => off(i, -hw - 4, -.03), 8, runMat);
   // 縁石（きついカーブの内がわ・外がわ）
   const curbMat = new THREE.MeshStandardMaterial({ map: curbTex, roughness: .7 });
   const tight = i => TR.akap[i] > 1 / 170;
@@ -503,7 +580,7 @@ function buildCourse() {
   if (THEME.scenery === 'city') buildCity(near, BX, BZ, BR, m4);
   if (THEME.scenery === 'beach') buildBeach(near, BX, BZ, BR, m4);
   // さんみゃく
-  if (THEME.mountains) for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283 + rnd(-.1, .1), h = rnd(120, 320), r = rnd(120, 220);
+  if (THEME.mountains && !HQ) for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283 + rnd(-.1, .1), h = rnd(120, 320), r = rnd(120, 220);
     const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(.6, .15, rnd(.45, .6)), roughness: 1, flatShading: true }));
     m.position.set(BX + Math.cos(a) * (BR + 650), h / 2 - 5, BZ + Math.sin(a) * (BR + 450)); courseGroup.add(m); }
   // タイヤの かべ（きついカーブの外がわ）
@@ -1000,11 +1077,11 @@ function frame(now) {
   requestAnimationFrame(frame);
   const rdt = Math.min((now - last) / 1000, .1); last = now; clockT += rdt;
   fxUpdate(rdt);
-  if (state === 'menu') { menuCam(rdt); renderer.render(scene, camera); return; }
-  if (state === 'replay') { replayStep(rdt); if (state === 'replay') updateVisuals(rdt); renderer.render(scene, camera); return; }
+  if (state === 'menu') { menuCam(rdt); draw(); return; }
+  if (state === 'replay') { replayStep(rdt); if (state === 'replay') updateVisuals(rdt); draw(); return; }
   if (!paused) { acc += rdt; let n = 0; while (acc >= FIXED && n++ < 6) { acc -= FIXED; simulate(FIXED); } if (n >= 6) acc = 0; }
   updateVisuals(rdt);
-  renderer.render(scene, camera);
+  draw();
 }
 function simulate(dt) {
   if (state === 'countdown') {
@@ -1170,7 +1247,7 @@ async function enableTilt() {
 /* =============== UI =============== */
 { const row = $('colors'); CAR_COLORS.forEach((c, i) => { const b = document.createElement('div'); b.className = 'sw' + (i === 0 ? ' sel' : ''); b.style.background = c; b.addEventListener('click', () => { selColor = i; row.querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === i)); refreshMenuCar(); }); row.appendChild(b); }); }
 function bindGroup(id, attr, fn) { $(id).querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { $(id).querySelectorAll('.opt').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); fn(b.dataset[attr]); })); }
-bindGroup('steerRow', 'steer', v => { steerMode = v; try { localStorage.setItem('apex.steer', v); } catch (e) {} }); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('diffRow', 'diff', v => { selDiff = v; try { localStorage.setItem('apex.diff', v); } catch (e) {} }); $('diffRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.diff === selDiff)); bindGroup('laps', 'laps', v => selLaps = +v);
+bindGroup('steerRow', 'steer', v => { steerMode = v; try { localStorage.setItem('apex.steer', v); } catch (e) {} }); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); $('qualRow').querySelectorAll('.opt').forEach(b => { b.classList.toggle('sel', (b.dataset.q === 'low') === LOW); b.addEventListener('click', () => { const want = b.dataset.q; if ((want === 'low') === LOW) return; try { localStorage.setItem('apex.quality', want); } catch (e) {} location.reload(); }); }); bindGroup('diffRow', 'diff', v => { selDiff = v; try { localStorage.setItem('apex.diff', v); } catch (e) {} }); $('diffRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.diff === selDiff)); bindGroup('laps', 'laps', v => selLaps = +v);
 function renderBest() { $('best').textContent = bestLap ? '🏆 ベストラップ ' + fmt(bestLap) : ''; } renderBest();
 $('go').addEventListener('click', async () => {
   audioInit(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
@@ -1485,7 +1562,7 @@ $('syncStart').addEventListener('click', async () => {
 $('syncStop').addEventListener('click', () => { if (!confirm('このデバイスの同期をやめますか？（保存したコースは消えません）')) return; syncId = null; try { localStorage.removeItem('apex.syncKey'); } catch (e) {} syncUI(); });
 (async () => { let k = null; try { k = localStorage.getItem('apex.syncKey'); } catch (e) {} if (k) { $('syncKey').value = k; if (FB.apiKey && window.crypto && crypto.subtle) { syncId = await makeSyncId(k); cloudSync(); } } syncUI(); })();
 addEventListener('visibilitychange', () => { if (!document.hidden) cloudSoon(); });
-syncCourseUI(); receiveFromHash(); ensureCourse();
+setupPost(); syncCourseUI(); receiveFromHash(); ensureCourse();
 
 /* =============== ゴール演出・リプレイ =============== */
 let rec = [], recN = 0, recLapStart = 0, recPrevLap = 0, repT = 0, repLen = 0, repPaused = false, repSlow = false, repCam = 0, repCamT = 0, repSpot = null, repJust = true;
