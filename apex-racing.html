@@ -88,6 +88,7 @@
   #rpBar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 10px 14px; width: min(560px, 94vw); pointer-events: auto; }
   #rpProg { height: 6px; background: rgba(255,255,255,.2); border-radius: 3px; margin-bottom: 10px; overflow: hidden; } #rpFill { height: 100%; width: 0; background: #ff5252; }
   .edb.on { background: rgba(0,170,255,.6); }
+  #syncKey { flex: 1; min-width: 160px; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 8px 10px; font-size: 15px; font-family: inherit; -webkit-user-select: text; user-select: text; }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -161,7 +162,13 @@
   </div>
   <div id="edHelp">タップ＝点をおく　点をドラッグ＝動かす　空き地をドラッグ＝画面移動　ピンチ＝拡大縮小</div>
   <div id="edToast" class="panel hidden"></div>
-  <div id="edList" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:8px">保存したコース</div><div id="edListBody"></div><button class="edb" id="edListClose" style="margin-top:10px">閉じる</button></div>
+  <div id="edList" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:8px">保存したコース</div><div id="edListBody"></div><div id="syncBox" style="margin-top:14px;border-top:1px solid rgba(255,255,255,.2);padding-top:10px">
+    <div class="it" style="font-size:18px">☁ クラウド同期</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><input id="syncKey" placeholder="合言葉（8文字以上）" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"><button class="edb" id="syncGen">🎲 作る</button></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb go" id="syncStart">☁ 同期をはじめる</button><button class="edb hidden" id="syncStop">同期をやめる</button></div>
+    <div id="syncStatus" style="font-size:13px;margin-top:6px;color:#b0bec5"></div>
+  </div>
+  <button class="edb" id="edListClose" style="margin-top:10px">閉じる</button></div>
   <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">ほかのデバイス・友だちに送る</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="edb go" id="edSendOne">📤 このコースをリンクで送る</button><button class="edb" id="edSendAll">📦 保存した全コースを送る</button></div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">送ったリンクを別のiPadやスマホで開くと、コースが自動で保存されます。ホーム画面のアイコンから遊んでいる場合は、届いたリンクやコードを下に貼って「読み込む」を押してください。</div><textarea id="edCode" rows="5" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -979,20 +986,21 @@ $('edPreset').addEventListener('change', e => { const k = e.target.value; if (!k
 $('edSave').addEventListener('click', () => {
   if (ED.pts.length < 3) { edToast('点をおいてから保存してね'); return; }
   const name = ($('edName').value.trim() || 'マイコース').slice(0, 20), list = edStore(), entry = { name, pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }, i = list.findIndex(c => c.name === name);
-  if (i >= 0) list[i] = entry; else list.push(entry); edStoreSet(list.slice(-30)); $('edName').value = name; edToast(`「${name}」を保存しました`);
+  if (i >= 0 && JSON.stringify(list[i].pts) !== JSON.stringify(entry.pts)) addDel(list[i].pts); unDel(entry.pts);
+  if (i >= 0) list[i] = entry; else list.push(entry); edStoreSet(list.slice(-30)); cloudSoon(); $('edName').value = name; edToast(`「${name}」を保存しました`);
 });
-$('edLoad').addEventListener('click', () => {
+function renderCourseList() {
   const list = edStore(), box = $('edListBody'); box.innerHTML = '';
   if (!list.length) box.textContent = 'まだ保存したコースがありません';
   list.forEach((c, i) => {
     const row = document.createElement('div'); row.className = 'lrow'; const nm = document.createElement('span'); nm.textContent = c.name;
     const o = document.createElement('button'); o.className = 'edb'; o.textContent = '開く'; o.onclick = () => { edSet(c.pts, c.name); $('edList').classList.add('hidden'); };
-    const d = document.createElement('button'); d.className = 'edb'; d.textContent = '削除'; d.onclick = () => { if (confirm(`「${c.name}」を削除しますか？`)) { const l = edStore(); l.splice(i, 1); edStoreSet(l); $('edLoad').click(); } };
+    const d = document.createElement('button'); d.className = 'edb'; d.textContent = '削除'; d.onclick = () => { if (confirm(`「${c.name}」を削除しますか？`)) { const l = edStore(); addDel(c.pts); l.splice(i, 1); edStoreSet(l); cloudSoon(); renderCourseList(); } };
     const sd = document.createElement('button'); sd.className = 'edb'; sd.textContent = '送る'; sd.onclick = () => shareCourses([c], `コース「${c.name}」`);
     row.append(nm, o, sd, d); box.appendChild(row);
   });
-  $('edList').classList.remove('hidden');
-});
+}
+$('edLoad').addEventListener('click', () => { renderCourseList(); $('edList').classList.remove('hidden'); cloudSoon(); });
 $('edListClose').addEventListener('click', () => $('edList').classList.add('hidden'));
 $('edShare').addEventListener('click', () => {
   const body = JSON.stringify({ n: $('edName').value.trim(), p: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) });
@@ -1047,9 +1055,9 @@ function importCourses(str) {
     if (!o || !validPts(o.p)) continue; const pts = o.p.map(q => [Math.round(+q[0]), Math.round(+q[1])]), key = JSON.stringify(pts);
     const same = list.find(c => JSON.stringify(c.pts) === key); if (same) { first = first || same; continue; }
     let name = String(o.n || 'もらったコース').slice(0, 20); while (list.some(c => c.name === name)) name = name.slice(0, 18) + '+';
-    const e = { name, pts }; list.push(e); first = first || e; added++;
+    const e = { name, pts }; list.push(e); unDel(pts); first = first || e; added++;
   }
-  edStoreSet(list.slice(-30));
+  edStoreSet(list.slice(-30)); if (added) cloudSoon();
   if (first) { customCourse = { name: first.name, pts: first.pts.map(p => p.slice()) }; courseSel = 'custom'; syncCourseUI(); }
   return added;
 }
@@ -1062,6 +1070,61 @@ function receiveFromHash() {
 }
 $('edSendOne').addEventListener('click', () => { if (ED.pts.length < 3) { edToast('点をおいてから送ってね'); return; } shareCourses([{ name: ($('edName').value.trim() || 'マイコース').slice(0, 20), pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }], 'このコースで走ろう！'); });
 $('edSendAll').addEventListener('click', () => { const l = edStore(); shareCourses(l, `保存したコース ${l.length}個`); });
+/* =============== クラウド同期（Firebase Firestore・合言葉方式） =============== */
+// Firebase の設定（apiKey と projectId は 公開してよい識別子）
+const FB = { apiKey: 'AIzaSyDTUcUoagLh076ag115gI8nZwpQQw-yOto', projectId: 'apex-racing-cf408' };
+const getDel = () => { try { return JSON.parse(localStorage.getItem('apex.deleted') || '[]'); } catch (e) { return []; } };
+const setDel = a => { try { localStorage.setItem('apex.deleted', JSON.stringify(a.slice(-300))); } catch (e) {} };
+const ptsHash = p => hashStr(JSON.stringify(p));
+function addDel(p) { const d = getDel(), h = ptsHash(p); if (!d.includes(h)) { d.push(h); setDel(d); } }
+function unDel(p) { const h = ptsHash(p); setDel(getDel().filter(x => x !== h)); }
+const normKey = k => String(k).normalize('NFKC').trim().toLowerCase().replace(/\s+/g, '');
+async function makeSyncId(key) { const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('apex-racing:' + key)); return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join(''); }
+let syncId = null, syncTimer = 0, syncBusy = false;
+function setSync(t, col) { const e = $('syncStatus'); e.textContent = t; e.style.color = col || '#b0bec5'; }
+function mergeCourses(la, ld, ra, rd) {
+  const del = new Set([...ld, ...rd]), out = [], seen = new Set();
+  for (const c of [...la, ...ra]) {
+    if (!c || !validPts(c.pts)) continue; const h = ptsHash(c.pts); if (del.has(h) || seen.has(h)) continue; seen.add(h);
+    let name = String(c.name || 'コース').slice(0, 20); while (out.some(o => o.name === name)) name = name.slice(0, 18) + '+';
+    out.push({ name, pts: c.pts });
+  }
+  return { list: out.slice(-30), del: [...del].slice(-300) };
+}
+async function cloudSync() {
+  if (!FB.apiKey || !syncId || syncBusy) return; syncBusy = true; setSync('☁ 同期中…');
+  const url = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents/apexsync/${syncId}?key=${FB.apiKey}`;
+  try {
+    let r = await fetch(url), ra = [], rd = [];
+    if (r.ok) { const f = (await r.json()).fields || {}; ra = JSON.parse((f.courses && f.courses.stringValue) || '[]'); rd = JSON.parse((f.deleted && f.deleted.stringValue) || '[]'); }
+    else if (r.status !== 404) throw new Error('get ' + r.status);
+    const m = mergeCourses(edStore(), getDel(), Array.isArray(ra) ? ra : [], Array.isArray(rd) ? rd : []);
+    edStoreSet(m.list); setDel(m.del);
+    r = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { courses: { stringValue: JSON.stringify(m.list) }, deleted: { stringValue: JSON.stringify(m.del) }, updated: { integerValue: String(Date.now()) } } }) });
+    if (!r.ok) throw new Error('patch ' + r.status);
+    const d = new Date(); setSync(`☁ 同期OK（${m.list.length}コース）最終 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`, '#69f0ae');
+    if (!$('edList').classList.contains('hidden')) renderCourseList();
+  } catch (e) { setSync('☁ 同期できませんでした。電波を確認して「今すぐ同期」を押してね', '#ff8a80'); }
+  syncBusy = false;
+}
+function cloudSoon() { if (!syncId) return; clearTimeout(syncTimer); syncTimer = setTimeout(cloudSync, 800); }
+function syncUI() {
+  const on = !!syncId, ready = !!FB.apiKey;
+  $('syncStart').textContent = on ? '🔄 今すぐ同期' : '☁ 同期をはじめる'; $('syncStop').classList.toggle('hidden', !on);
+  $('syncKey').disabled = on; $('syncGen').classList.toggle('hidden', on);
+  if (!ready) setSync('（クラウドの準備がまだです）', '#ffab91'); else if (!on) setSync('同じ合言葉を入れたiPadやスマホ同士で、保存したコースが自動で同じになります');
+}
+$('syncGen').addEventListener('click', () => { const w = ['kuruma', 'drift', 'turbo', 'apex', 'speed', 'circuit', 'racer', 'nitro']; $('syncKey').value = pick(w) + '-' + Math.floor(1000 + Math.random() * 9000) + '-' + pick(w); });
+$('syncStart').addEventListener('click', async () => {
+  if (!FB.apiKey) { setSync('（クラウドの準備がまだです）', '#ffab91'); return; }
+  if (syncId) { cloudSync(); return; }
+  const k = normKey($('syncKey').value); if (k.length < 8) { setSync('合言葉は8文字以上にしてね（🎲で作れます）', '#ff8a80'); return; }
+  try { localStorage.setItem('apex.syncKey', k); } catch (e) {}
+  $('syncKey').value = k; syncId = await makeSyncId(k); syncUI(); cloudSync();
+});
+$('syncStop').addEventListener('click', () => { if (!confirm('このデバイスの同期をやめますか？（保存したコースは消えません）')) return; syncId = null; try { localStorage.removeItem('apex.syncKey'); } catch (e) {} syncUI(); });
+(async () => { let k = null; try { k = localStorage.getItem('apex.syncKey'); } catch (e) {} if (k) { $('syncKey').value = k; if (FB.apiKey && window.crypto && crypto.subtle) { syncId = await makeSyncId(k); cloudSync(); } } syncUI(); })();
+addEventListener('visibilitychange', () => { if (!document.hidden) cloudSoon(); });
 syncCourseUI(); receiveFromHash(); ensureCourse();
 
 /* =============== ゴール演出・リプレイ =============== */
@@ -1146,7 +1209,7 @@ $('rpCamBtn').addEventListener('click', () => { repCam = (repCam + 1) % REP_CAMS
 $('rpSlow').addEventListener('click', () => { repSlow = !repSlow; $('rpSlow').classList.toggle('on', repSlow); });
 $('rpExit').addEventListener('click', endReplay);
 
-window.__apex = { startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
+window.__apex = { FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
