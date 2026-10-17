@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>APEX RACING</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="APEX">
+<meta name="theme-color" content="#0b0d14">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d14; color: #fff; touch-action: none;
@@ -122,6 +127,7 @@
   <h1 class="it">APEX RACING</h1>
   <div class="sub">3D CIRCUIT × DRIFT</div>
   <div id="best"></div>
+  <div id="installHint" class="hidden" style="font-size:14px;color:#cfd8dc;text-align:center;max-width:560px;line-height:1.6"></div>
   <div id="menuNote" class="hidden" style="font-size:16px;font-weight:bold;text-align:center"></div>
   <div class="row" id="cars">
     <button class="opt sel" data-car="0">GT クーペ<small>バランス型</small></button>
@@ -1512,6 +1518,20 @@ $('rpCamBtn').addEventListener('click', () => { repCam = (repCam + 1) % REP_CAMS
 $('rpSlow').addEventListener('click', () => { repSlow = !repSlow; $('rpSlow').classList.toggle('on', repSlow); });
 $('rpExit').addEventListener('click', endReplay);
 
+/* =============== ホーム画面アプリ =============== */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+const isStandalone = matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+let installEvt = null;
+function showInstallHint() {
+  const el = $('installHint'); if (isStandalone || !/^https:/.test(location.protocol)) return;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (installEvt) { el.innerHTML = '<button class="opt" id="installBtn">📲 アプリとしてホーム画面に追加</button>'; $('installBtn').onclick = async () => { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; el.classList.add('hidden'); }; }
+  else if (ios) el.innerHTML = '📲 Safariの<b>共有ボタン</b>（□に↑）→<b>「ホーム画面に追加」</b>で、アイコンからすぐ遊べます';
+  else return;
+  el.classList.remove('hidden');
+}
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstallHint(); });
+showInstallHint();
 window.__apex = { BUILTIN, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
