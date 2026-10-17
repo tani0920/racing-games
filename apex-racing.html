@@ -66,6 +66,22 @@
   #best { color: #ffca28; font-size: 15px; }
   #resBox { padding: 18px 28px; min-width: min(420px, 92vw); } #resBox h2 { margin: 0 0 10px; font-size: 40px; color: #ffca28; }
   #resBox table { width: 100%; font-variant-numeric: tabular-nums; font-size: 18px; border-collapse: collapse; } #resBox td { padding: 3px 4px; } #resBox td:last-child { text-align: right; }
+  #editor { position: fixed; inset: 0; z-index: 50; background: #243424; }
+  #edCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #edTop { position: absolute; top: 10px; left: 10px; right: 10px; padding: 8px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .edTitle { color: #ffca28; font-size: 18px; margin-right: auto; }
+  #edTop input, #edTop select, #edCode { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 8px 10px; font-size: 15px; font-family: inherit; -webkit-user-select: text; user-select: text; }
+  #edTop select option { color: #111; }
+  #edCode { width: 100%; font-size: 13px; resize: none; }
+  #edStatus { position: absolute; top: 66px; left: 10px; padding: 6px 12px; font-size: 14px; max-width: calc(100% - 20px); }
+  #edBar { position: absolute; bottom: 36px; left: 10px; right: 10px; padding: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .edb { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.3); background: rgba(30,36,56,.9); color: #fff; font-size: 15px; font-family: inherit; cursor: pointer; }
+  .edb.go { background: linear-gradient(#ff7043, #e53935); border: none; font-weight: 800; }
+  #edHelp { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 12px; color: rgba(255,255,255,.6); pointer-events: none; }
+  #edToast { position: absolute; top: 108px; left: 50%; transform: translateX(-50%); padding: 8px 16px; font-size: 15px; pointer-events: none; }
+  #edList, #edShareBox { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 16px; width: min(440px, 92vw); max-height: 80vh; overflow: auto; background: rgba(12,16,30,.96); }
+  .lrow { display: flex; gap: 8px; align-items: center; margin: 6px 0; } .lrow span { flex: 1; font-size: 16px; }
+  #courseRow .opt small, #steerRow .opt small { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -106,6 +122,7 @@
   <div class="row" id="laps">
     <button class="opt sel" data-laps="3">3 周</button><button class="opt" data-laps="5">5 周</button><button class="opt" data-laps="1">1 周</button>
   </div>
+  <div class="row" id="courseRow"><button class="opt sel" data-course="preset">標準サーキット<small>全長 約2.5km</small></button><button class="opt" data-course="custom">オリジナルコース<small id="customName">作る・えらぶ</small></button></div>
   <div class="row" id="steerRow"><button class="opt sel" data-steer="btn">ボタンでハンドル</button><button class="opt" data-steer="tilt">傾きでハンドル<small>iPad・スマホを傾ける</small></button></div>
   <button id="go" class="it">START</button>
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
@@ -116,6 +133,25 @@
   <div class="row"><button class="big-btn it" id="again">もう一度</button><button class="big-btn it" id="toMenu" style="background:linear-gradient(#546e7a,#37474f);box-shadow:0 6px 0 #1c262b">メニュー</button></div>
 </div>
 
+
+<div id="editor" class="hidden">
+  <canvas id="edCanvas"></canvas>
+  <div id="edTop" class="panel">
+    <span class="it edTitle">COURSE EDITOR</span>
+    <input id="edName" placeholder="コースの名前" maxlength="20">
+    <select id="edPreset"><option value="">お手本を読み込む…</option><option value="std">標準サーキット</option><option value="oval">オーバル</option><option value="snake">うねうね</option><option value="tech">テクニカル</option></select>
+  </div>
+  <div id="edStatus" class="panel it"></div>
+  <div id="edBar" class="panel">
+    <button class="edb" id="edUndo">↩ 戻す</button><button class="edb" id="edDel">🗑 点を消す</button><button class="edb" id="edClear">全部消す</button>
+    <button class="edb" id="edSave">💾 保存</button><button class="edb" id="edLoad">📂 保存したコース</button><button class="edb" id="edShare">🔗 コード</button>
+    <button class="edb" id="edBack">✕ もどる</button><button class="edb go" id="edRun">▶ このコースで走る</button>
+  </div>
+  <div id="edHelp">タップ＝点をおく　点をドラッグ＝動かす　空き地をドラッグ＝画面移動　ピンチ＝拡大縮小</div>
+  <div id="edToast" class="panel hidden"></div>
+  <div id="edList" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:8px">保存したコース</div><div id="edListBody"></div><button class="edb" id="edListClose" style="margin-top:10px">閉じる</button></div>
+  <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">コードで共有</div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">このコードを友だちに送ると、同じコースで遊べます。もらったコードは下に貼って「読み込む」。</div><textarea id="edCode" rows="5"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">この文字から読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (() => {
@@ -130,7 +166,7 @@ const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 /* =============== コース生成（入り組んだ周回コース） =============== */
 const ROAD_W = 18, WALL_D = ROAD_W / 2 + 7;
-const TR = (() => {
+function presetPoints() {
   const g = (t, t0, s) => { const d = angDiff(t, t0); return Math.exp(-d * d / (2 * s * s)); };
   const bumps = [[1.0, .385, .28], [3.55, -.308, .238], [5.05, .352, .224], [2.3, -.198, .196]];
   const raw = t => {
@@ -139,6 +175,10 @@ const TR = (() => {
     return [Math.cos(t) * 420 * r, Math.sin(t) * 300 * r];
   };
   const M = 5000, P = []; for (let i = 0; i < M; i++) P.push(raw(i / M * 2 * Math.PI));
+  return P;
+}
+function buildTR(P) {
+  const M = P.length;
   const cum = [0]; for (let i = 1; i <= M; i++) { const a = P[i - 1], b = P[i % M]; cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
   const L = cum[M], N = Math.round(L / 4), ds = L / N;
   let S = [], j = 0;
@@ -157,8 +197,8 @@ const TR = (() => {
   o.nx = o.tz.slice(); o.nz = o.tx.map(v => -v);
   o.akap = kap.map(Math.abs);
   return o;
-})();
-const N = TR.N;
+}
+let TR = buildTR(presetPoints()); const PRESET_TR = TR; let N = TR.N;
 function trackAt(sf) {
   const i0 = Math.floor(sf), f = sf - i0, i = ((i0 % N) + N) % N, j = (i + 1) % N;
   let tx = lerp(TR.tx[i], TR.tx[j], f), tz = lerp(TR.tz[i], TR.tz[j], f); const l = Math.hypot(tx, tz); tx /= l; tz /= l;
@@ -229,39 +269,41 @@ const checkerTex = canvasTex(128, 32, (g, w, h) => { for (let y = 0; y < 4; y++)
 const crowdTex = canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#3d414c'; g.fillRect(0, 0, w, h); for (let i = 0; i < 380; i++) { g.fillStyle = `hsl(${Math.random() * 360},35%,${30 + Math.random() * 18}%)`; g.fillRect(Math.random() * w, Math.random() * h, 3, 4); } }, true);
 
 /* =============== コースを組み立てる =============== */
+let courseGroup = null;
 function makeStrip(fa, fb, vScale, mat, mask) {
   const pos = [], uv = [], idx = [];
   for (let i = 0; i <= N; i++) { const a = fa(i % N), b = fb(i % N), v = i * TR.ds / vScale; pos.push(...a, ...b); uv.push(0, v, 1, v); }
   for (let i = 0; i < N; i++) { if (mask && !mask(i)) continue; const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.frustumCulled = false; scene.add(m); return m;
+  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.frustumCulled = false; courseGroup.add(m); return m;
 }
 const off = (i, d, y) => [TR.x[i] + TR.nx[i] * d, y, TR.z[i] + TR.nz[i] * d];
 const hw = ROAD_W / 2;
-// まっすぐ上に向く法線を保証するため 左→右 の順
-makeStrip(i => off(i, hw, 0), i => off(i, -hw, 0), 18, new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: .92, metalness: 0 }));
 const grassMat = new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), grassMat); ground.rotation.x = -Math.PI / 2; ground.position.y = -.12; ground.receiveShadow = true; scene.add(ground);
-// ぎりぎり まで 舗装（ランオフ）
-makeStrip(i => off(i, hw + 4, -.03), i => off(i, hw, -.03), 8, new THREE.MeshStandardMaterial({ color: 0x5a6a45, roughness: 1 }));
-makeStrip(i => off(i, -hw, -.03), i => off(i, -hw - 4, -.03), 8, new THREE.MeshStandardMaterial({ color: 0x5a6a45, roughness: 1 }));
-// 縁石（きついカーブの内がわ・外がわ）
-const curbMat = new THREE.MeshStandardMaterial({ map: curbTex, roughness: .7 });
-const tight = i => TR.akap[i] > 1 / 170;
-makeStrip(i => off(i, hw + 1.6, .05), i => off(i, hw, .05), 3, curbMat, i => tight(i));
-makeStrip(i => off(i, -hw, .05), i => off(i, -hw - 1.6, .05), 3, curbMat, i => tight(i));
-// かべ
-const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: .6, side: THREE.DoubleSide });
-for (const s of [1, -1]) {
+function buildCourse() {
+  if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  courseGroup = new THREE.Group(); scene.add(courseGroup);
+  // まっすぐ上に向く法線を保証するため 左→右 の順
+  makeStrip(i => off(i, hw, 0), i => off(i, -hw, 0), 18, new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: .92, metalness: 0 }));
+  makeStrip(i => off(i, hw + 4, -.03), i => off(i, hw, -.03), 8, new THREE.MeshStandardMaterial({ color: 0x5a6a45, roughness: 1 }));
+  makeStrip(i => off(i, -hw, -.03), i => off(i, -hw - 4, -.03), 8, new THREE.MeshStandardMaterial({ color: 0x5a6a45, roughness: 1 }));
+  // 縁石（きついカーブの内がわ・外がわ）
+  const curbMat = new THREE.MeshStandardMaterial({ map: curbTex, roughness: .7 });
+  const tight = i => TR.akap[i] > 1 / 170;
+  makeStrip(i => off(i, hw + 1.6, .05), i => off(i, hw, .05), 3, curbMat, i => tight(i));
+  makeStrip(i => off(i, -hw, .05), i => off(i, -hw - 1.6, .05), 3, curbMat, i => tight(i));
+  // かべ
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: .6, side: THREE.DoubleSide });
+  for (const s of [1, -1]) {
   makeStrip(i => off(i, s * WALL_D, 0), i => off(i, s * WALL_D, 1.15), 8, wallMat);
   makeStrip(i => off(i, s * WALL_D, 1.15), i => off(i, s * (WALL_D + .5), 1.15), 8, new THREE.MeshStandardMaterial({ color: 0xcfd2d8, roughness: .5 }));
-}
-// スタートライン・ゲート
-{
+  }
+  {
   const s0 = trackAt(0), ang = Math.atan2(s0.tx, s0.tz);
   checkerTex.repeat.set(1, 1);
   const line = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W, 2), new THREE.MeshBasicMaterial({ map: checkerTex })); line.rotation.x = -Math.PI / 2; line.rotation.z = -ang; line.position.set(s0.x, .06, s0.z);
-  line.rotation.set(-Math.PI / 2, 0, 0); line.rotation.order = 'YXZ'; line.rotation.y = ang; scene.add(line);
+  line.rotation.set(-Math.PI / 2, 0, 0); line.rotation.order = 'YXZ'; line.rotation.y = ang; courseGroup.add(line);
   const gate = new THREE.Group(); gate.position.set(s0.x, 0, s0.z); gate.rotation.y = ang;
   const pm = new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: .4, metalness: .7 });
   for (const x of [-hw - 1.5, hw + 1.5]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.9, 9, .9), pm); p.position.set(x, 4.5, 0); p.castShadow = true; gate.add(p); }
@@ -269,7 +311,7 @@ for (const s of [1, -1]) {
   const bt = canvasTex(1024, 128, (g, w, h) => { g.fillStyle = '#10131c'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffca28'; g.font = 'italic 900 84px Helvetica,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('APEX  START / FINISH', w / 2, h / 2 + 4); });
   const ban = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W + 3.6, 2.4), new THREE.MeshBasicMaterial({ map: bt })); ban.position.set(0, 9, .52); gate.add(ban);
   const ban2 = ban.clone(); ban2.rotation.y = Math.PI; ban2.position.z = -.52; gate.add(ban2);
-  scene.add(gate);
+  courseGroup.add(gate);
   // かんきゃくせき
   const cs = new THREE.MeshStandardMaterial({ map: crowdTex, roughness: 1 }); crowdTex.repeat.set(10, 1);
   for (const side of [1, -1]) for (let k = 0; k < 3; k++) {
@@ -277,16 +319,18 @@ for (const s of [1, -1]) {
     const st = new THREE.Group(); st.position.set(t.x + t.nx * side * (WALL_D + 9), 0, t.z + t.nz * side * (WALL_D + 9)); st.rotation.y = a + (side > 0 ? -Math.PI / 2 : Math.PI / 2);
     for (let r = 0; r < 6; r++) { const step = new THREE.Mesh(new THREE.BoxGeometry(80, 1.1, 2.2), cs); step.position.set(0, .55 + r * 1.1, r * 2.2); step.castShadow = true; st.add(step); }
     const roof = new THREE.Mesh(new THREE.BoxGeometry(82, .4, 16), new THREE.MeshStandardMaterial({ color: 0xdadde4, roughness: .5 })); roof.position.set(0, 9, 6); st.add(roof);
-    scene.add(st);
+    courseGroup.add(st);
   }
-}
-// 木・タイヤ・看板・さんみゃく
-{
+  }
+  // 木・タイヤ・看板・さんみゃく
+  {
   const near = (x, z) => { let m = 1e9; for (let i = 0; i < N; i += 2) { const d = Math.hypot(x - TR.x[i], z - TR.z[i]); if (d < m) m = d; } return m; };
+  let bx0 = 1e9, bx1 = -1e9, bz0 = 1e9, bz1 = -1e9; for (let i = 0; i < N; i++) { bx0 = Math.min(bx0, TR.x[i]); bx1 = Math.max(bx1, TR.x[i]); bz0 = Math.min(bz0, TR.z[i]); bz1 = Math.max(bz1, TR.z[i]); }
+  const BX = (bx0 + bx1) / 2, BZ = (bz0 + bz1) / 2, BR = Math.max(bx1 - bx0, bz1 - bz0) / 2 + 420;
   const trees = [], bbs = [];
   let tries = 0;
   while (trees.length < 900 && tries++ < 8000) {
-    const a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * 900; const x = Math.cos(a) * r * 1.05, z = Math.sin(a) * r * .8;
+    const a = rnd(0, 6.283), r = Math.sqrt(Math.random()) * BR; const x = BX + Math.cos(a) * r * 1.05, z = BZ + Math.sin(a) * r * .8;
     if (near(x, z) > WALL_D + 10) trees.push([x, z, rnd(.8, 1.7)]);
   }
   const n = trees.length, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.35, .5, 3, 6), new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 1 }), n);
@@ -299,16 +343,16 @@ for (const s of [1, -1]) {
     m4.makeScale(s, s, s).setPosition(x, (3 + 8) * s, z); crown2.setMatrixAt(i, m4);
     col.setHSL(rnd(.28, .38), rnd(.35, .5), rnd(.2, .3)); crown.setColorAt(i, col); crown2.setColorAt(i, col);
   });
-  [trunk, crown, crown2].forEach(m => { m.castShadow = !LOW; scene.add(m); });
+  [trunk, crown, crown2].forEach(m => { m.castShadow = !LOW; courseGroup.add(m); });
   // さんみゃく
   for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283 + rnd(-.1, .1), h = rnd(120, 320), r = rnd(120, 220);
     const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(.6, .15, rnd(.45, .6)), roughness: 1, flatShading: true }));
-    m.position.set(Math.cos(a) * 1250, h / 2 - 5, Math.sin(a) * 1050); scene.add(m); }
+    m.position.set(BX + Math.cos(a) * (BR + 650), h / 2 - 5, BZ + Math.sin(a) * (BR + 450)); courseGroup.add(m); }
   // タイヤの かべ（きついカーブの外がわ）
   const tireG = new THREE.CylinderGeometry(.55, .55, .5, 12), tm = new THREE.InstancedMesh(tireG, new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: .9 }), 400), tw = new THREE.InstancedMesh(tireG, new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: .9 }), 100);
   let ti = 0, wi = 0;
   for (let i = 0; i < N; i += 2) { if (TR.akap[i] > 1 / 90) { const s = TR.kap[i] > 0 ? -1 : 1; for (let k = 0; k < 3; k++) { if (ti >= 400) break; m4.makeTranslation(TR.x[i] + TR.nx[i] * s * (WALL_D - 1.4), .3 + k * .5, TR.z[i] + TR.nz[i] * s * (WALL_D - 1.4)); tm.setMatrixAt(ti++, m4); } if (wi < 100 && i % 6 === 0) { m4.makeTranslation(TR.x[i] + TR.nx[i] * s * (WALL_D - 1.4), 1.3, TR.z[i] + TR.nz[i] * s * (WALL_D - 1.4)); tw.setMatrixAt(wi++, m4); } } }
-  tm.count = ti; tw.count = wi; scene.add(tm, tw);
+  tm.count = ti; tw.count = wi; courseGroup.add(tm, tw);
   // かんばん
   const texts = ['TURBO', 'APEX', 'NITRO', 'DRIFT KING', 'SPEED'];
   for (let i = 0; i < 14; i++) { const idx = Math.floor((i + .5) / 14 * N), t = trackAt(idx), side = i % 2 ? 1 : -1;
@@ -316,7 +360,8 @@ for (const s of [1, -1]) {
     const bt = canvasTex(512, 160, (g, w, h) => { g.fillStyle = pick(['#c62828', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a']); g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'italic 900 90px Helvetica,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(pick(texts), w / 2, h / 2 + 4); });
     const b = new THREE.Mesh(new THREE.PlaneGeometry(14, 4.4), new THREE.MeshStandardMaterial({ map: bt, roughness: .6 }));
     b.position.set(t.x + t.nx * side * (WALL_D + 3.5), 3.4, t.z + t.nz * side * (WALL_D + 3.5)); b.rotation.y = Math.atan2(t.tx, t.tz) + (side > 0 ? Math.PI / 2 : -Math.PI / 2) + Math.PI;
-    scene.add(b); const bm = b.clone(); bm.material = new THREE.MeshStandardMaterial({ color: 0x333840 }); bm.rotation.y += Math.PI; bm.position.add(new THREE.Vector3(t.nx * side * .08, 0, t.nz * side * .08)); scene.add(bm); }
+    courseGroup.add(b); const bm = b.clone(); bm.material = new THREE.MeshStandardMaterial({ color: 0x333840 }); bm.rotation.y += Math.PI; bm.position.add(new THREE.Vector3(t.nx * side * .08, 0, t.nz * side * .08)); courseGroup.add(bm); }
+  }
 }
 
 /* =============== くるまモデル =============== */
@@ -399,7 +444,7 @@ function placeOnGrid(c, slot, lane) {
   c.x = t.x + t.nx * lane; c.z = t.z + t.nz * lane; c.h = Math.atan2(t.tx, t.tz); c.vx = c.vz = 0; c.cum = sf; c.idx = ((Math.round(sf) % N) + N) % N;
 }
 function startRace() {
-  audioInit();
+  audioInit(); ensureCourse();
   for (const o of [player, ...ais]) if (o) scene.remove(o.car.root);
   const si = selCar; lapsTotal = selLaps;
   const slot = 2;
@@ -633,7 +678,7 @@ function simulate(dt) {
       player.lapDone = lapNow;
       if (lapNow >= 1) {
         const lt = raceT - lapStartT; lapStartT = raceT; lapTimes.push(lt); $('tLast').textContent = fmt(lt);
-        if (!bestLap || lt < bestLap) { bestLap = lt; try { localStorage.setItem('apex.best', String(lt)); } catch (e) {} showMsg('BEST LAP ' + fmt(lt), '#ffca28'); } else if (lapNow < lapsTotal) showMsg('LAP ' + (lapNow + 1), '#fff');
+        if (!bestLap || lt < bestLap) { bestLap = lt; try { localStorage.setItem(bestStoreKey(), String(lt)); } catch (e) {} showMsg('BEST LAP ' + fmt(lt), '#ffca28'); } else if (lapNow < lapsTotal) showMsg('LAP ' + (lapNow + 1), '#fff');
         $('tBest').textContent = fmt(bestLap);
         if (lapNow >= lapsTotal) finishRace();
       }
@@ -709,9 +754,9 @@ function updateVisuals(rdt) {
 }
 const miniCanvas = $('mini'), mg = miniCanvas.getContext('2d'); const mm = document.createElement('canvas'); mm.width = mm.height = 340;
 let mScale = 1, mox = 0, moz = 0;
-{ let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < N; i++) { x0 = Math.min(x0, TR.x[i]); x1 = Math.max(x1, TR.x[i]); z0 = Math.min(z0, TR.z[i]); z1 = Math.max(z1, TR.z[i]); }
+function buildMini() { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < N; i++) { x0 = Math.min(x0, TR.x[i]); x1 = Math.max(x1, TR.x[i]); z0 = Math.min(z0, TR.z[i]); z1 = Math.max(z1, TR.z[i]); }
   mScale = Math.min(300 / (x1 - x0), 300 / (z1 - z0)); mox = -(x0 + x1) / 2; moz = -(z0 + z1) / 2;
-  const g = mm.getContext('2d'); g.lineJoin = 'round'; g.lineCap = 'round';
+  const g = mm.getContext('2d'); g.clearRect(0, 0, 340, 340); g.lineJoin = 'round'; g.lineCap = 'round';
   const path = () => { g.beginPath(); for (let i = 0; i <= N; i++) { const k = i % N, px = 170 + (TR.x[k] + mox) * mScale, pz = 170 + (TR.z[k] + moz) * mScale; i ? g.lineTo(px, pz) : g.moveTo(px, pz); } };
   g.strokeStyle = '#1b2030'; g.lineWidth = 16; path(); g.stroke(); g.strokeStyle = '#cfd8dc'; g.lineWidth = 9; path(); g.stroke();
   g.fillStyle = '#fff'; g.fillRect(170 + (TR.x[0] + mox) * mScale - 3, 170 + (TR.z[0] + moz) * mScale - 8, 6, 16); }
@@ -775,17 +820,187 @@ addEventListener('keydown', e => { if (KM[e.key]) { keys[KM[e.key]] = 1; e.preve
 addEventListener('keyup', e => { if (KM[e.key]) keys[KM[e.key]] = 0; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
 
-window.__apex = { get player() { return player; }, TR, startRace, get state() { return state; }, keys, tch, setCam: m => camMode = m };
+/* =============== オリジナルコース・エディタ =============== */
+let courseSel = 'preset', customCourse = null, builtKey = null, courseKey = 'preset';
+const bestStoreKey = () => courseKey === 'preset' ? 'apex.best' : 'apex.best.' + courseKey;
+function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function loadBest() { try { bestLap = parseFloat(localStorage.getItem(bestStoreKey()) || '0') || 0; } catch (e) { bestLap = 0; } renderBest(); }
+function ensureCourse() {
+  const key = courseSel === 'custom' && customCourse ? 'c' + hashStr(JSON.stringify(customCourse.pts)) : 'preset';
+  if (builtKey === key) return;
+  TR = key === 'preset' ? PRESET_TR : buildTR(edSpline(customCourse.pts));
+  N = TR.N; buildCourse(); buildMini(); builtKey = key; courseKey = key; loadBest(); refreshMenuCar();
+}
+function edSpline(pts) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(p[0], 0, p[1])), true, 'centripetal'); curve.arcLengthDivisions = 3000;
+  const n = Math.max(120, Math.round(curve.getLength() / 3));
+  return curve.getSpacedPoints(n).slice(0, -1).map(v => [v.x, v.z]);
+}
+const ED = { pts: [], sel: -1, hist: [], view: { cx: 0, cz: 0, sc: 1 }, ptrs: new Map(), drag: -1, moved: false, pan: null, pinch: null, P: null, tr: null, an: null, dpr: 1, raf: 0 };
+const edCv = $('edCanvas'), edG = edCv.getContext('2d');
+function edAnalyze() {
+  const r = { ok: false, msg: '', bad: [], L: 0, minR: 0 };
+  if (ED.pts.length < 4 || !ED.P) { r.msg = '点を4つ以上おいて、ぐるっと一周のコースにしよう'; ED.tr = null; return r; }
+  const tr = buildTR(ED.P); ED.tr = tr; r.L = tr.L;
+  let maxK = 0; for (let i = 0; i < tr.N; i++) { if (tr.akap[i] > maxK) maxK = tr.akap[i]; if (tr.akap[i] > 1 / 18 && i % 2 === 0) r.bad.push([tr.x[i], tr.z[i]]); }
+  r.minR = maxK ? 1 / maxK : 9999; const tight = r.bad.length > 0; let close = false;
+  for (let i = 0; i < tr.N; i += 2) for (let j = i + 1; j < tr.N; j += 2) { const dd = Math.min(j - i, tr.N - (j - i)); if (dd * tr.ds < 150) continue; const dx = tr.x[i] - tr.x[j], dz = tr.z[i] - tr.z[j]; if (dx * dx + dz * dz < 42 * 42) { close = true; r.bad.push([tr.x[i], tr.z[i]]); } }
+  if (tr.L < 700) r.msg = `コースが短すぎます（${Math.round(tr.L)}m）。もっと大きく！`;
+  else if (tr.L > 6000) r.msg = `コースが長すぎます（${(tr.L / 1000).toFixed(1)}km）`;
+  else if (tight) r.msg = 'カーブがきつすぎる所があります（赤い丸）。点を離そう';
+  else if (close) r.msg = '道が近すぎる・交差している所があります（赤い丸）';
+  else { r.ok = true; r.msg = `OK！ 全長 ${(tr.L / 1000).toFixed(2)}km ／ いちばんきついカーブ 半径${Math.round(r.minR)}m`; }
+  return r;
+}
+function edUpdate() {
+  ED.P = ED.pts.length >= 3 ? edSpline(ED.pts) : null; ED.an = edAnalyze();
+  const s = $('edStatus'); s.textContent = ED.an.msg; s.style.color = ED.an.ok ? '#69f0ae' : '#ffab91';
+  $('edRun').disabled = !ED.an.ok; $('edRun').style.opacity = ED.an.ok ? 1 : .4; edDraw();
+}
+function edSched() { if (ED.raf) return; ED.raf = requestAnimationFrame(() => { ED.raf = 0; edUpdate(); }); }
+function edPush() { ED.hist.push(JSON.stringify(ED.pts)); if (ED.hist.length > 40) ED.hist.shift(); }
+function edToast(t) { const e = $('edToast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(edToast.t); edToast.t = setTimeout(() => e.classList.add('hidden'), 2200); }
+function edSize() { const r = edCv.getBoundingClientRect(); ED.dpr = Math.min(devicePixelRatio || 1, 2); edCv.width = Math.max(10, r.width * ED.dpr); edCv.height = Math.max(10, r.height * ED.dpr); }
+function edFit() {
+  const v = ED.view, W = edCv.width, H = edCv.height;
+  if (!ED.pts.length) { v.cx = 0; v.cz = 0; v.sc = Math.min(W, H) / 950; return; }
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; ED.pts.forEach(p => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); });
+  v.cx = (x0 + x1) / 2; v.cz = (z0 + z1) / 2; v.sc = Math.min(W / (x1 - x0 + 300), H / (z1 - z0 + 300));
+}
+function edDraw() {
+  const g = edG, W = edCv.width, H = edCv.height, v = ED.view, d = ED.dpr;
+  const sx = x => (x - v.cx) * v.sc + W / 2, sy = z => (z - v.cz) * v.sc + H / 2;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#243424'; g.fillRect(0, 0, W, H);
+  // グリッド
+  const step = v.sc * 100 < 24 ? 500 : 100;
+  g.lineWidth = 1; for (let x = Math.floor((v.cx - W / 2 / v.sc) / step) * step; x < v.cx + W / 2 / v.sc; x += step) { g.strokeStyle = x % 500 === 0 ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.06)'; g.beginPath(); g.moveTo(sx(x), 0); g.lineTo(sx(x), H); g.stroke(); }
+  for (let z = Math.floor((v.cz - H / 2 / v.sc) / step) * step; z < v.cz + H / 2 / v.sc; z += step) { g.strokeStyle = z % 500 === 0 ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.06)'; g.beginPath(); g.moveTo(0, sy(z)); g.lineTo(W, sy(z)); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.35)'; g.font = `${11 * d}px sans-serif`; g.fillText('100mごとのグリッド', 10 * d, H - 10 * d);
+  const path = P => { g.beginPath(); P.forEach((p, i) => i ? g.lineTo(sx(p[0]), sy(p[1])) : g.moveTo(sx(p[0]), sy(p[1]))); g.closePath(); };
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  if (ED.P) {
+    path(ED.P); g.strokeStyle = '#e53935'; g.lineWidth = Math.max(5 * d, ROAD_W * v.sc + 5 * d); g.stroke();
+    path(ED.P); g.strokeStyle = '#4b5059'; g.lineWidth = Math.max(3 * d, ROAD_W * v.sc); g.stroke();
+    path(ED.P); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = Math.max(1, 1.2 * d); g.setLineDash([8 * d, 10 * d]); g.stroke(); g.setLineDash([]);
+  } else if (ED.pts.length > 1) { g.strokeStyle = '#90a4ae'; g.lineWidth = 2 * d; g.beginPath(); ED.pts.forEach((p, i) => i ? g.lineTo(sx(p[0]), sy(p[1])) : g.moveTo(sx(p[0]), sy(p[1]))); g.stroke(); }
+  // スタート
+  if (ED.tr) { const t = ED.tr, x = sx(t.x[0]), y = sy(t.z[0]), w = ROAD_W * v.sc / 2 + 4 * d;
+    g.strokeStyle = '#fff'; g.lineWidth = 5 * d; g.beginPath(); g.moveTo(x - t.nx[0] * w, y - t.nz[0] * w); g.lineTo(x + t.nx[0] * w, y + t.nz[0] * w); g.stroke();
+    g.fillStyle = '#ffca28'; g.beginPath(); const ax = x + t.tx[0] * 26 * d, ay = y + t.tz[0] * 26 * d; g.moveTo(ax, ay); g.lineTo(x + t.nx[0] * 9 * d + t.tx[0] * 8 * d, y + t.nz[0] * 9 * d + t.tz[0] * 8 * d); g.lineTo(x - t.nx[0] * 9 * d + t.tx[0] * 8 * d, y - t.nz[0] * 9 * d + t.tz[0] * 8 * d); g.fill();
+    g.fillStyle = '#ffca28'; g.font = `bold ${12 * d}px sans-serif`; g.fillText('START', x - t.nx[0] * (w + 38 * d) - 18 * d, y - t.nz[0] * (w + 38 * d)); }
+  // 問題の場所
+  if (ED.an) ED.an.bad.slice(0, 80).forEach(p => { g.strokeStyle = '#ff1744'; g.lineWidth = 3 * d; g.beginPath(); g.arc(sx(p[0]), sy(p[1]), 15 * d, 0, 6.283); g.stroke(); });
+  // 点
+  ED.pts.forEach((p, i) => { g.fillStyle = i === ED.sel ? '#ff9100' : i === 0 ? '#ffca28' : '#fff'; g.strokeStyle = '#111'; g.lineWidth = 2 * d; g.beginPath(); g.arc(sx(p[0]), sy(p[1]), 10 * d, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#111'; g.font = `bold ${10 * d}px sans-serif`; g.textAlign = 'center'; g.fillText(i + 1, sx(p[0]), sy(p[1]) + 3.5 * d); g.textAlign = 'left'; });
+  if (!ED.pts.length) { g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `bold ${20 * d}px sans-serif`; g.textAlign = 'center'; g.fillText('タップして点をおいていこう', W / 2, H / 2); g.font = `${14 * d}px sans-serif`; g.fillText('ぐるっと一周するように。または上の「お手本」から始めてもOK', W / 2, H / 2 + 28 * d); g.textAlign = 'left'; }
+}
+const edPos = e => { const r = edCv.getBoundingClientRect(); return { x: (e.clientX - r.left) * ED.dpr, y: (e.clientY - r.top) * ED.dpr }; };
+const edW = p => ({ x: (p.x - edCv.width / 2) / ED.view.sc + ED.view.cx, z: (p.y - edCv.height / 2) / ED.view.sc + ED.view.cz });
+function edHit(p) { let best = -1, bd = (26 * ED.dpr) ** 2; ED.pts.forEach((q, i) => { const sx = (q[0] - ED.view.cx) * ED.view.sc + edCv.width / 2, sy = (q[1] - ED.view.cz) * ED.view.sc + edCv.height / 2, d = (sx - p.x) ** 2 + (sy - p.y) ** 2; if (d < bd) { bd = d; best = i; } }); return best; }
+function edInsert(w) {
+  edPush(); const pt = [Math.round(w.x), Math.round(w.z)], P = ED.pts;
+  if (P.length < 3) { P.push(pt); ED.sel = P.length - 1; return; }
+  let bi = 0, bd = 1e18;
+  for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1; let t = ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dz) / l2; t = Math.max(0, Math.min(1, t)); const d = (a[0] + dx * t - pt[0]) ** 2 + (a[1] + dz * t - pt[1]) ** 2; if (d < bd) { bd = d; bi = i; } }
+  P.splice(bi + 1, 0, pt); ED.sel = bi + 1;
+}
+edCv.addEventListener('pointerdown', e => {
+  e.preventDefault(); edCv.setPointerCapture(e.pointerId); const p = edPos(e); ED.ptrs.set(e.pointerId, p);
+  if (ED.ptrs.size === 2) { const [a, b] = [...ED.ptrs.values()]; ED.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, sc: ED.view.sc }; ED.drag = -1; ED.pan = null; ED.moved = true; return; }
+  ED.moved = false; ED.down = p; const hit = edHit(p);
+  if (hit >= 0) { ED.sel = hit; ED.drag = hit; edPush(); ED.dragPushed = true; } else { ED.drag = -1; ED.pan = { x: p.x, y: p.y, cx: ED.view.cx, cz: ED.view.cz }; }
+  edDraw();
+});
+edCv.addEventListener('pointermove', e => {
+  if (!ED.ptrs.has(e.pointerId)) return; const p = edPos(e); ED.ptrs.set(e.pointerId, p);
+  if (ED.pinch && ED.ptrs.size >= 2) { const [a, b] = [...ED.ptrs.values()]; ED.view.sc = clamp(ED.pinch.sc * (Math.hypot(a.x - b.x, a.y - b.y) / ED.pinch.d), .05, 6); edDraw(); return; }
+  if (Math.hypot(p.x - ED.down.x, p.y - ED.down.y) > 7 * ED.dpr) ED.moved = true;
+  if (ED.drag >= 0 && ED.moved) { const w = edW(p); ED.pts[ED.drag] = [Math.round(w.x), Math.round(w.z)]; edSched(); }
+  else if (ED.pan && ED.moved) { ED.view.cx = ED.pan.cx - (p.x - ED.pan.x) / ED.view.sc; ED.view.cz = ED.pan.cz - (p.y - ED.pan.y) / ED.view.sc; edDraw(); }
+});
+const edUp = e => {
+  if (!ED.ptrs.has(e.pointerId)) return; const p = edPos(e), wasPinch = !!ED.pinch; ED.ptrs.delete(e.pointerId);
+  if (ED.ptrs.size < 2) ED.pinch = null;
+  if (wasPinch) { ED.drag = -1; ED.pan = null; return; }
+  if (ED.drag >= 0 && !ED.moved && ED.dragPushed) ED.hist.pop();
+  if (ED.drag < 0 && !ED.moved && e.type === 'pointerup') edInsert(edW(p));
+  ED.drag = -1; ED.pan = null; edUpdate();
+};
+edCv.addEventListener('pointerup', edUp); edCv.addEventListener('pointercancel', edUp);
+edCv.addEventListener('wheel', e => { e.preventDefault(); const p = edPos(e), w = edW(p), k = Math.exp(-e.deltaY * .0015); ED.view.sc = clamp(ED.view.sc * k, .05, 6); const w2 = edW(p); ED.view.cx += w.x - w2.x; ED.view.cz += w.z - w2.z; edDraw(); }, { passive: false });
+const edStore = () => { try { return JSON.parse(localStorage.getItem('apex.courses') || '[]'); } catch (e) { return []; } };
+const edStoreSet = a => { try { localStorage.setItem('apex.courses', JSON.stringify(a)); } catch (e) {} };
+function edPresetPts(kind) {
+  if (kind === 'std') { const k = Math.round(PRESET_TR.N / 22), a = []; for (let i = 0; i < PRESET_TR.N; i += k) a.push([Math.round(PRESET_TR.x[i] / 5) * 5, Math.round(PRESET_TR.z[i] / 5) * 5]); return a; }
+  if (kind === 'oval') return [[0, -200], [260, -170], [400, 0], [260, 170], [0, 200], [-260, 170], [-400, 0], [-260, -170]];
+  if (kind === 'snake') return [[-380, -60], [-230, -170], [-80, -50], [70, -170], [230, -60], [370, -180], [440, 0], [350, 150], [210, 60], [60, 180], [-90, 70], [-240, 180], [-400, 90]];
+  if (kind === 'tech') return [[-350, 0], [-250, -150], [-100, -200], [50, -120], [180, -200], [330, -130], [380, 20], [300, 130], [160, 80], [60, 180], [-90, 220], [-250, 170]];
+  return [];
+}
+function edSet(pts, name) { ED.pts = pts.map(p => [p[0], p[1]]); ED.sel = -1; ED.hist = []; $('edName').value = name || ''; edSize(); edFit(); edUpdate(); }
+function openEditor() {
+  $('editor').classList.remove('hidden'); edSize();
+  if (customCourse && !ED.pts.length) { ED.pts = customCourse.pts.map(p => p.slice()); $('edName').value = customCourse.name; }
+  edFit(); edUpdate(); requestAnimationFrame(() => { const w = edCv.width; edSize(); if (edCv.width !== w) { edFit(); edDraw(); } });
+}
+function syncCourseUI() {
+  $('courseRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.course === courseSel));
+  $('customName').textContent = customCourse ? customCourse.name : '作る・えらぶ';
+}
+function closeEditor() { $('editor').classList.add('hidden'); $('edList').classList.add('hidden'); $('edShareBox').classList.add('hidden'); syncCourseUI(); }
+$('courseRow').querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { if (b.dataset.course === 'custom') { openEditor(); } else { courseSel = 'preset'; syncCourseUI(); } }));
+addEventListener('resize', () => { if (!$('editor').classList.contains('hidden')) { edSize(); edDraw(); } });
+$('edBack').addEventListener('click', closeEditor);
+$('edUndo').addEventListener('click', () => { const h = ED.hist.pop(); if (h) { ED.pts = JSON.parse(h); ED.sel = -1; edUpdate(); } else edToast('もう戻せません'); });
+$('edDel').addEventListener('click', () => { if (ED.sel < 0) { edToast('消したい点をタップして選んでね'); return; } edPush(); ED.pts.splice(ED.sel, 1); ED.sel = -1; edUpdate(); });
+$('edClear').addEventListener('click', () => { if (ED.pts.length && confirm('全部の点を消しますか？')) { edPush(); ED.pts = []; ED.sel = -1; edUpdate(); } });
+$('edPreset').addEventListener('change', e => { const k = e.target.value; if (!k) return; if (ED.pts.length && !confirm('今の点を、お手本に入れ替えますか？')) { e.target.value = ''; return; } edPush(); const hist = ED.hist; edSet(edPresetPts(k), ({ std: '標準をアレンジ', oval: 'オーバル', snake: 'うねうね', tech: 'テクニカル' })[k]); ED.hist = hist; e.target.value = ''; });
+$('edSave').addEventListener('click', () => {
+  if (ED.pts.length < 3) { edToast('点をおいてから保存してね'); return; }
+  const name = ($('edName').value.trim() || 'マイコース').slice(0, 20), list = edStore(), entry = { name, pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }, i = list.findIndex(c => c.name === name);
+  if (i >= 0) list[i] = entry; else list.push(entry); edStoreSet(list.slice(-12)); $('edName').value = name; edToast(`「${name}」を保存しました`);
+});
+$('edLoad').addEventListener('click', () => {
+  const list = edStore(), box = $('edListBody'); box.innerHTML = '';
+  if (!list.length) box.textContent = 'まだ保存したコースがありません';
+  list.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'lrow'; const nm = document.createElement('span'); nm.textContent = c.name;
+    const o = document.createElement('button'); o.className = 'edb'; o.textContent = '開く'; o.onclick = () => { edSet(c.pts, c.name); $('edList').classList.add('hidden'); };
+    const d = document.createElement('button'); d.className = 'edb'; d.textContent = '削除'; d.onclick = () => { if (confirm(`「${c.name}」を削除しますか？`)) { const l = edStore(); l.splice(i, 1); edStoreSet(l); $('edLoad').click(); } };
+    row.append(nm, o, d); box.appendChild(row);
+  });
+  $('edList').classList.remove('hidden');
+});
+$('edListClose').addEventListener('click', () => $('edList').classList.add('hidden'));
+$('edShare').addEventListener('click', () => {
+  const body = JSON.stringify({ n: $('edName').value.trim(), p: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) });
+  $('edCode').value = ED.pts.length >= 3 ? 'APEX1:' + btoa(unescape(encodeURIComponent(body))) : ''; $('edShareBox').classList.remove('hidden');
+});
+$('edShareClose').addEventListener('click', () => $('edShareBox').classList.add('hidden'));
+$('edCopy').addEventListener('click', async () => { const t = $('edCode').value; try { await navigator.clipboard.writeText(t); edToast('コードをコピーしました'); } catch (e) { $('edCode').select(); edToast('選択しました。長押しでコピーしてね'); } });
+$('edImport').addEventListener('click', () => {
+  try { let t = $('edCode').value.trim(); if (t.startsWith('APEX1:')) t = t.slice(6); const o = JSON.parse(decodeURIComponent(escape(atob(t)))); if (!Array.isArray(o.p) || o.p.length < 3 || o.p.length > 200 || !o.p.every(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]))) throw 0;
+    edSet(o.p.map(q => [+q[0], +q[1]]), String(o.n || 'もらったコース').slice(0, 20)); $('edShareBox').classList.add('hidden'); edToast('コードから読み込みました');
+  } catch (e) { edToast('コードが正しくありません'); }
+});
+$('edRun').addEventListener('click', () => {
+  if (!ED.an || !ED.an.ok) { edToast(ED.an ? ED.an.msg : ''); return; }
+  customCourse = { name: ($('edName').value.trim() || 'オリジナル').slice(0, 20), pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }; courseSel = 'custom';
+  closeEditor(); $('go').click();
+});
+syncCourseUI(); ensureCourse();
+
+window.__apex = { get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
 <script>
 /* iPad: 拡大・ダブルタップ・長押しメニューなどのブラウザ動作を止める */
-(function(){var o={passive:false},p=function(e){e.preventDefault()};
+(function(){var o={passive:false},ok=function(e){return e.target&&e.target.closest&&e.target.closest('input,textarea,select,.allow')},p=function(e){if(!ok(e))e.preventDefault()};
 ['gesturestart','gesturechange','gestureend','dblclick','contextmenu','selectstart','dragstart'].forEach(function(t){document.addEventListener(t,p,o)});
 document.addEventListener('touchmove',p,o);
-var last=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-last<350)e.preventDefault();last=n},o);
-document.addEventListener('touchstart',function(e){if(e.touches.length>1)e.preventDefault()},o);})();
+var last=0;document.addEventListener('touchend',function(e){var n=Date.now();if(n-last<350&&!ok(e))e.preventDefault();last=n},o);
+document.addEventListener('touchstart',function(e){if(e.touches.length>1&&!ok(e))e.preventDefault()},o);})();
 </script>
 </body>
 </html>
