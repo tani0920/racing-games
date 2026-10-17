@@ -189,6 +189,7 @@
   <div class="row" id="steerRow"><button class="opt sel" data-steer="btn">ボタンでハンドル</button><button class="opt" data-steer="tilt">傾きでハンドル<small>iPad・スマホを傾ける</small></button></div>
   <button id="go" class="it">START</button>
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
+  <div style="text-align:center;line-height:1.4"><span style="font-size:11px;color:#78909c">3Dモデル: Ray Alez, Owl TeaGames (CC-BY 3.0) ／ Quaternius, scaranto, Kay Lousberg (CC0) — Poly Pizza ／ 景色・木: Poly Haven (CC0)</span></div>
 </div>
 
 <div id="tiltDlg" class="hidden"><div class="panel" style="padding:18px 20px;max-width:440px;text-align:center;line-height:1.7">
@@ -676,6 +677,7 @@ function makeWheel(r, w, side) {
 }
 function makeCar(si, colorHex) {
   if (GLB_CARS[si]) return makeCarGLB(si, colorHex);
+  if (CAR_TPL[si]) return makeCarTPL(si, colorHex);
   if (CAR_SPECS[si].build) return CAR_SPECS[si].build(CAR_SPECS[si], colorHex);
   const sp = CAR_SPECS[si], root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const paint = new THREE.MeshPhysicalMaterial({ color: colorHex, roughness: .28, metalness: .55, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: 1.2 });
@@ -917,6 +919,47 @@ const GT_FIX = {
 };
 CAR_SPECS[0].glb = 'cars/gt_coupe.glb'; CAR_SPECS[0].glbFix = GT_FIX;
 loadCarGLB(0, CAR_SPECS[0].glb, GT_FIX);
+
+/* =============== 無料の3Dモデル（Poly Pizza）を使う車 =============== */
+const CAR_TPL = {};   // 車の番号 → 組み立て済みの見本（これを複製して使う）
+const triArea = (g) => { const p = g.attributes.position, ix = g.index ? g.index.array : null, n = ix ? ix.length : p.count, a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(); let s = 0;
+  for (let i = 0; i < n; i += 3) { a.fromBufferAttribute(p, ix ? ix[i] : i); b.fromBufferAttribute(p, ix ? ix[i + 1] : i + 1); c.fromBufferAttribute(p, ix ? ix[i + 2] : i + 2); s += b.sub(a).cross(c.sub(a)).length() / 2; } return s; };
+function loadCarModel(si, cfg) {
+  if (!THREE.GLTFLoader) return;
+  new THREE.GLTFLoader().load(cfg.url, g => {
+    const src = g.scene; src.updateMatrixWorld(true);
+    // 道路の板など、車より下にある部品を取りのぞく
+    if (cfg.removeBelow != null) { const rm = []; src.traverse(o => { if (o.isMesh && new THREE.Box3().setFromObject(o).max.y < cfg.removeBelow) rm.push(o); }); rm.forEach(o => o.parent.remove(o)); }
+    const root = new THREE.Group(), w = new THREE.Group(); w.add(src); root.add(w); w.rotation.y = cfg.rotY || 0; root.updateMatrixWorld(true);
+    let box = new THREE.Box3().setFromObject(w), size = box.getSize(new THREE.Vector3()); w.scale.setScalar(cfg.length / size.z); root.updateMatrixWorld(true);
+    box = new THREE.Box3().setFromObject(w); const c = box.getCenter(new THREE.Vector3()); w.position.set(-c.x, -box.min.y, -c.z); root.updateMatrixWorld(true);
+    // タイヤ：名前に wheel / tire などがある部品を まとめて 回るようにする
+    const groups = new Map();
+    w.traverse(o => { if (!o.isMesh) return; let n = o, hit = null; while (n && n !== w) { if (/wheel|tire|tyre|rim|rubber/i.test(n.name)) hit = n; n = n.parent; } if (hit) { const key = /back|rear/i.test(hit.name) && /wheels/i.test(hit.name) ? hit : (hit.isMesh ? hit.parent && /wheel/i.test(hit.parent.name) ? hit.parent : hit : hit); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(o); } });
+    groups.forEach((meshes, key) => {
+      const b = new THREE.Box3(); meshes.forEach(m => b.expandByObject(m)); const ctr = b.getCenter(new THREE.Vector3());
+      const steer = new THREE.Group(), spin = new THREE.Group(); steer.position.copy(ctr); root.add(steer); steer.add(spin); root.updateMatrixWorld(true);
+      meshes.forEach(m => spin.attach(m)); spin.userData.spin = true; if (ctr.z > .3 && Math.abs(ctr.x) > .2) steer.userData.steer = true;
+    });
+    // ぬり替える塗装：いちばん面積が広い、暗くない・模様（画像）のない色
+    const area = new Map(); root.traverse(o => { if (!o.isMesh || !o.material || o.material.map) return; const col = o.material.color, l = (col.r + col.g + col.b) / 3; if (l < .08) return; area.set(o.material, (area.get(o.material) || 0) + triArea(o.geometry)); });
+    let paint = null, best = 0; if (cfg.paintName) area.forEach((v, m) => { if (m.name === cfg.paintName) paint = m; }); if (!paint) area.forEach((v, m) => { if (v > best && !/glass|window|light|tire|rubber|rim|chrome|metal/i.test(m.name || '')) { best = v; paint = m; } });
+    root.traverse(o => { if (o.isMesh) { o.castShadow = !LOW; o.receiveShadow = true; if (paint && o.material === paint) o.userData.paint = true; } });
+    CAR_TPL[si] = root; refreshMenuCar();
+  });
+}
+function makeCarTPL(si, colorHex) {
+  const sp = CAR_SPECS[si], root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const inst = CAR_TPL[si].clone(true); body.add(inst);
+  const wheels = [], fronts = []; let paint = null;
+  inst.traverse(o => { if (o.userData.spin) wheels.push(o); if (o.userData.steer) fronts.push(o);
+    if (o.isMesh && o.userData.paint) { if (!paint) { paint = o.material.clone(); paint.color.set(colorHex).convertSRGBToLinear(); paint.roughness = .38; paint.metalness = .08; paint.envMapIntensity = .9; } o.material = paint; } });
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x7a0000, emissive: 0xff1100, emissiveIntensity: .7 });
+  return { root, body, wheels, fronts, tailMat, spec: sp, paint: paint || paintOf(colorHex) };
+}
+[[1, { url: 'cars/supercar.glb', length: 4.5 }], [2, { url: 'cars/rally.glb', length: 4.1 }], [3, { url: 'cars/gt500.glb', length: 4.8 }],
+ [4, { url: 'cars/formula.glb', length: 5.0, rotY: Math.PI / 2 }], [5, { url: 'cars/tcr.glb', length: 4.3 }], [6, { url: 'cars/roadster.glb', length: 3.9, rotY: -Math.PI / 2, removeBelow: -0.12, paintName: 'mat21' }]]
+  .forEach(([si, cfg]) => loadCarModel(si, cfg));
 
 /* =============== ゲームじょうたい =============== */
 const players = []; let player = null, ais = [];

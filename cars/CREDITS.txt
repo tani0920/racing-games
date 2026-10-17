@@ -1,0 +1,9 @@
+車の3Dモデル（Poly Pizza https://poly.pizza より）
+- スーパーカー: "Sports Car" by Quaternius（Public Domain / CC0）
+- ラリー: "Car" by Ray Alez（CC-BY 3.0）
+- GTマシン: "Sports Car" by Quaternius（Public Domain / CC0）
+- フォーミュラ: "Racing car" by scaranto（Public Domain / CC0）
+- ツーリングカー: "Car Hatchback" by Kay Lousberg（Public Domain / CC0）
+- オープンスポーツ: "The Orange Racer" by Owl TeaGames（CC-BY 3.0）
+- GTクーペ: ChatGPTで描いた絵を TRELLIS（MIT）で3D化
+CC-BY のものは、ゲーム内メニューにも作者名を表示しています。
