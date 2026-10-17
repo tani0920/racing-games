@@ -137,6 +137,21 @@
   /* メニュー：えらんだ車が見えるように、ボタンは 横長の画面なら右・縦長の画面なら下 によせる */
   @media (min-aspect-ratio: 5/4) { #menu { left: auto; width: min(620px, 58vw); background: linear-gradient(90deg, rgba(5,8,18,0), rgba(5,8,18,.8) 14%, rgba(5,8,18,.88)); } #menu h1 { font-size: clamp(30px, 5.6vw, 72px); white-space: nowrap; } }
   @media (max-aspect-ratio: 5/4) { #menu { top: 34vh; background: linear-gradient(rgba(5,8,18,0), rgba(5,8,18,.82) 7%, rgba(5,8,18,.9)); } }
+  /* TURBO DRIVE（がくしゅう） */
+  body:not(.turbo) .turboOnly, body.turbo .apexOnly { display: none !important; }
+  #quiz { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); padding: 6px 16px 8px; text-align: center; max-width: min(640px, 66vw); }
+  #qvis { font-size: clamp(24px, 4.2vw, 40px); font-weight: 900; line-height: 1.15; }
+  #qvis .kanji { font-size: clamp(52px, 9vw, 88px); line-height: 1; text-shadow: 0 0 16px #7df9ff; }
+  #qvis .eq { color: #fff59d; } #qvis svg { width: clamp(80px, 13vw, 120px); height: auto; vertical-align: middle; }
+  .hissan { font-family: "Menlo","Courier New",monospace; font-size: 22px; white-space: pre; text-align: left; display: inline-block; margin-left: 16px; vertical-align: middle; color: #b2ebf2; line-height: 1.1; }
+  #qtext { font-size: clamp(14px, 2.4vw, 20px); color: #b3e5fc; }
+  #qchips { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+  .qchip { white-space: nowrap; padding: 2px 14px; border-radius: 8px; font-weight: 900; font-size: clamp(16px, 2.6vw, 26px); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .qchip.hint { outline: 3px solid #ffd740; animation: qhint .45s infinite alternate; } @keyframes qhint { to { transform: scale(1.12); } }
+  #qSay { position: absolute; right: -10px; top: -10px; width: 38px; height: 38px; font-size: 18px; }
+  @media (min-width: 601px) and (max-width: 760px) { #quiz { top: 248px; } }
+  #qStars { position: fixed; top: 116px; left: 14px; padding: 4px 12px; font-size: 15px; font-weight: bold; color: #ffe082; }
+  @media (max-height: 560px), (max-width: 600px) { #quiz { top: 58px; padding: 3px 10px 5px; } #qvis { font-size: 22px; } #qvis .kanji { font-size: 44px; } #qvis svg { width: 64px; } .hissan { display: none; } .qchip { font-size: 16px; padding: 1px 10px; } #qSay { width: 30px; height: 30px; font-size: 14px; right: -38px; top: 2px; } #qStars { top: 74px; font-size: 12px; } }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -154,6 +169,7 @@
   <div id="drift" class="panel"><div class="t">DRIFT BOOST</div><div id="driftBar"><div id="driftFill"></div></div><div class="it" id="driftScore">0</div></div>
   <div id="speedo" class="panel it"><span id="gear">N</span><span id="kmh">0</span><span class="u">km/h</span><div id="rpm"><div id="rpmBar"></div></div></div>
   <div id="msg" class="it"></div>
+  <div id="quiz" class="panel hidden"><button id="qSay" class="rb" title="もういちど読む">🔊</button><div id="qvis"></div><div id="qtext"></div><div id="qchips"></div></div><div id="qStars" class="panel hidden turboOnly"></div>
   <div id="touch" class="hidden">
     <div class="g"><button id="tL">◀</button><button id="tR">▶</button></div>
     <div class="g"><div class="col" id="tHBcol"><button id="tBrk" class="brk">ブレーキ</button><button id="tHB">ドリフト</button></div><button id="tGas">アクセル</button></div>
@@ -177,6 +193,7 @@
     <button class="opt" data-car="6">オープンスポーツ<small>屋根なし・軽快</small></button>
   </div>
   <div class="row" id="colors"></div>
+  <div class="row turboOnly" id="learnRow"><button class="opt" data-learn="mul">かけざん<small>九九</small></button><button class="opt" data-learn="calc">たし算・ひき算<small>2けた・くり上がりも</small></button><button class="opt" data-learn="kanji">かん字の よみ<small>1・2年生</small></button><button class="opt" data-learn="clock">とけい<small>なんじ なんぷん？</small></button><button class="opt" data-learn="mix">ぜんぶ ミックス<small>いろいろ出る</small></button></div>
   <div class="row" id="modes">
     <button class="opt sel" data-mode="race">レース<small>AI 5台</small></button>
     <button class="opt" data-mode="ta">タイムアタック<small>ひとりで走る</small></button>
@@ -188,7 +205,7 @@
   <div class="row" id="laps">
     <button class="opt sel" data-laps="3">3 周</button><button class="opt" data-laps="5">5 周</button><button class="opt" data-laps="1">1 周</button>
   </div>
-  <div class="row" id="courseRow"><button class="opt sel" data-course="preset">標準サーキット<small>森の中・約2.5km</small></button><button class="opt" data-course="city">シティ・サンセット<small>夕焼けの市街地</small></button><button class="opt" data-course="sea">シーサイド<small>海沿いの高速コース</small></button><button class="opt" data-course="custom">オリジナルコース<small id="customName">作る・えらぶ</small></button></div>
+  <div class="row" id="courseRow"><button class="opt apexOnly sel" data-course="preset">標準サーキット<small>森の中・約2.5km</small></button><button class="opt apexOnly" data-course="city">シティ・サンセット<small>夕焼けの市街地</small></button><button class="opt apexOnly" data-course="sea">シーサイド<small>海沿いの高速コース</small></button><button class="opt turboOnly" data-course="pass">峠のヘアピン<small>森・ヘアピンが連続</small></button><button class="opt turboOnly" data-course="tech">テクニカル市街地<small>直角コーナーとシケイン</small></button><button class="opt turboOnly" data-course="scoast">S字コースト<small>海ぞいの 連続S字</small></button><button class="opt" data-course="custom">オリジナルコース<small id="customName">作る・えらぶ</small></button></div>
   <div class="row" id="steerRow"><button class="opt sel" data-steer="btn">ボタンでハンドル</button><button class="opt" data-steer="tilt">傾きでハンドル<small>iPad・スマホを傾ける</small></button></div>
   <button id="go" class="it">START</button>
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
@@ -258,6 +275,8 @@ const LOW = /[?&]low/.test(location.search) || QSET === 'low' || (!QSET && Math.
 const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 /* =============== コース生成（入り組んだ周回コース） =============== */
+// ?turbo で ひらくと TURBO DRIVE（がくしゅうモード）になる
+const TURBO = /[?&]turbo\b/.test(location.search);
 const ROAD_W = 18, WALL_D = ROAD_W / 2 + 7;
 function presetPoints() {
   const g = (t, t0, s) => { const d = angDiff(t, t0); return Math.exp(-d * d / (2 * s * s)); };
@@ -569,6 +588,10 @@ function buildBeach(near, BX, BZ, BR, m4) {
 // 組みこみのコース
 const BUILTIN = {
   city: { theme: 'city', pts: [[-460, -260], [-160, -270], [-20, -200], [130, -270], [460, -260], [500, -110], [400, -20], [500, 110], [460, 260], [120, 270], [60, 130], [-80, 130], [-130, 270], [-460, 260], [-510, 0]] },
+  // TURBO DRIVE 用：ハンドル操作が いそがしい テクニカルコース
+  pass: { theme: 'forest', turbo: 1, pts: [[-500, -200], [-200, -230], [-120, -150], [-40, -230], [200, -200], [420, -160], [470, -60], [380, 0], [200, 20], [150, 90], [230, 160], [420, 180], [480, 260], [380, 320], [100, 300], [-50, 220], [-150, 300], [-300, 320], [-450, 250], [-400, 120], [-250, 80], [-300, 0], [-520, -60]] },
+  tech: { theme: 'city', turbo: 1, pts: [[-450, -250], [-20, -250], [40, -185], [100, -250], [400, -250], [450, -200], [450, -60], [290, -40], [270, 50], [450, 70], [450, 230], [400, 270], [120, 270], [80, 170], [-60, 170], [-100, 270], [-400, 270], [-450, 220], [-450, 100], [-330, 0], [-450, -100]] },
+  scoast: { theme: 'beach', turbo: 1, pts: [[-600, 0], [-520, -220], [-380, -180], [-300, -300], [-150, -220], [-60, -320], [80, -240], [200, -330], [340, -240], [420, -100], [600, -160], [660, 60], [520, 160], [380, 60], [260, 200], [100, 120], [-20, 280], [-200, 220], [-320, 320], [-460, 200]] },
   sea: { theme: 'beach', pts: [[-620, 0], [-470, -230], [-160, -310], [140, -230], [420, -300], [680, -130], [650, 130], [400, 210], [120, 120], [-110, 240], [-420, 250]] }
 };
 function buildCourse() {
@@ -1024,6 +1047,7 @@ function startRace() {
   $('touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || steerMode === 'tilt')); applyTiltUI();
   $('posT').textContent = ais.length + 1; $('lapT').textContent = lapsTotal; $('posN').textContent = selMode === 'race' ? 3 : 1;
   $('tBest').textContent = bestLap ? fmt(bestLap) : '--'; $('tLast').textContent = '--';
+  if (TURBO) turboStart();
 }
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 const fmt = t => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(2); };
@@ -1310,10 +1334,12 @@ function simulate(dt) {
       }
     } else if (lapNow < player.lapDone) player.lapDone = lapNow;
   }
+  if (TURBO && state === 'racing' && !finished) turboUpdate(dt);
   if (state === 'racing' && (recN++ & 1) === 0) recFrame();
 }
 function rank() { if (!ais.length) return 1; let r = 1; for (const a of ais) if (a.s > player.cumF) r++; return r; }
 function finishRace() {
+  if (TURBO) turboStop();
   finished = true; finishTime = raceT; finishRank = selMode === 'race' ? 1 + ais.filter(a => a.finished).length : 1;
   recLapStart = recPrevLap;
   const win = selMode !== 'race' || finishRank === 1;
@@ -1324,6 +1350,7 @@ function showResult() {
   let h = `<tr><td>総タイム</td><td>${fmt(finishTime)}</td></tr>`;
   lapTimes.forEach((t, i) => { h += `<tr><td>LAP ${i + 1}</td><td>${fmt(t)}${t === Math.min(...lapTimes) ? ' ★' : ''}</td></tr>`; });
   h += `<tr><td>ベストラップ（記録）</td><td>${fmt(bestLap)}</td></tr><tr><td>ドリフトポイント</td><td>${Math.floor(driftTotal)}</td></tr>`;
+  if (TURBO) h += turboResultRows();
   $('resTable').innerHTML = h; $('resTitle').textContent = selMode === 'race' ? `${finishRank}位 FINISH` : 'FINISH'; $('result').classList.remove('hidden');
 }
 
@@ -1455,7 +1482,7 @@ function applyTiltUI() { const t = steerMode === 'tilt';
   if (t) gl.appendChild($('tHBcol')); else gr.insertBefore($('tHBcol'), $('tGas')); $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
 $('tiltBtn').addEventListener('click', () => { tiltZero = tiltRoll; showMsg('センター合わせ', '#80deea'); });
 $('tiltInvBtn').addEventListener('click', () => { tiltInv = !tiltInv; try { localStorage.setItem('apex.tiltInv2', tiltInv ? '1' : '0'); } catch (e) {} showMsg(tiltInv ? '傾き: 反転' : '傾き: 標準', '#80deea'); });
-function toMenu() { state = 'menu'; bgmStop(); stopFx();  if (ac) { engG.gain.value = 0; tireG.gain.value = 0; } if (player) { scene.remove(player.car.root); player = null; } ais.forEach(a => scene.remove(a.car.root)); ais = []; $('hud').classList.add('hidden'); $('result').classList.add('hidden'); $('menu').classList.remove('hidden'); $('msg').classList.remove('sticky'); $('msg').style.opacity = 0; renderBest(); }
+function toMenu() { if (TURBO) turboStop(); state = 'menu'; bgmStop(); stopFx();  if (ac) { engG.gain.value = 0; tireG.gain.value = 0; } if (player) { scene.remove(player.car.root); player = null; } ais.forEach(a => scene.remove(a.car.root)); ais = []; $('hud').classList.add('hidden'); $('result').classList.add('hidden'); $('menu').classList.remove('hidden'); $('msg').classList.remove('sticky'); $('msg').style.opacity = 0; renderBest(); }
 $('toMenu').addEventListener('click', toMenu); $('homeBtn').addEventListener('click', toMenu);
 function togglePause() { if (state !== 'racing' && state !== 'countdown') return; paused = !paused; $('pause').classList.toggle('hidden', !paused); bgmLevel(paused ? .04 : .16); }
 $('pauseBtn').addEventListener('click', togglePause);
@@ -1847,7 +1874,156 @@ function showInstallHint() {
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstallHint(); });
 showInstallHint();
-window.__apex = { BUILTIN, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
+/* =============== TURBO DRIVE（がくしゅうモード）：コースの ゲートで こたえる =============== */
+// 小学2年生レベルの もんだい
+const KANJI = [['学校','がっこう'],['先生','せんせい'],['山','やま'],['川','かわ'],['空','そら'],['海','うみ'],['森','もり'],['雲','くも'],['星','ほし'],['雨','あめ'],['雪','ゆき'],['花','はな'],
+  ['犬','いぬ'],['魚','さかな'],['鳥','とり'],['馬','うま'],['牛','うし'],['車','くるま'],['電車','でんしゃ'],['男','おとこ'],['女','おんな'],['夏','なつ'],['春','はる'],['秋','あき'],['冬','ふゆ'],
+  ['朝','あさ'],['夜','よる'],['国','くに'],['町','まち'],['村','むら'],['足','あし'],['手','て'],['目','め'],['耳','みみ'],['口','くち'],['草','くさ'],['木','き'],['竹','たけ'],['石','いし'],
+  ['水','みず'],['火','ひ'],['土','つち'],['金','かね'],['何','なに'],['毎日','まいにち'],['今日','きょう']];
+const irnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+function numChoices(ans, near) {
+  const set = [ans];
+  for (const c of shuffle(near)) if (c >= 0 && !set.includes(c) && set.length < 3) set.push(c);
+  for (let d = 1; set.length < 3; d++) { const c = ans + (Math.random() < .5 ? d : -d); if (c >= 0 && !set.includes(c)) set.push(c); }
+  return set.map(n => ({ label: String(n), correct: n === ans }));
+}
+function hissan(a, b, op, ans) { const w = String(Math.max(a, b, ans)).length + 1; return `<span class="hissan">${String(a).padStart(w, ' ')}\n${op}${String(b).padStart(w - 1, ' ')}\n${'─'.repeat(w)}</span>`; }
+function qMul(tier) {
+  const a = pick(tier === 0 ? [2, 5, 3, 4] : [2, 3, 4, 5, 6, 7, 8, 9]), b = irnd(tier === 0 ? 1 : 2, 9), ans = a * b;
+  return { vis: `<span class="eq">${a} × ${b} ＝ ？</span>`, text: 'かけざん', say: `${a} かける ${b} は？`, choices: numChoices(ans, [ans + a, ans - a, ans + b, ans - b, ans + 10, ans - 10, ans + 1, ans - 1]), ansSay: String(ans) };
+}
+function qCalc(tier) {
+  const sub = Math.random() < .5; let a, b, ans;
+  if (!sub) { for (;;) { if (tier === 0) { a = irnd(10, 89); b = irnd(2, 89); if (a % 10 + b % 10 < 10 && a + b <= 99) break; } else if (tier === 1) { a = irnd(11, 89); b = irnd(11, 89); if (a % 10 + b % 10 >= 10 && a + b <= 99) break; } else { a = irnd(20, 99); b = irnd(20, 99); if (a + b > 100) break; } } ans = a + b; }
+  else { for (;;) { if (tier === 0) { a = irnd(20, 99); b = irnd(2, a - 1); if (b % 10 <= a % 10) break; } else if (tier === 1) { a = irnd(21, 99); b = irnd(11, a - 1); if (b % 10 > a % 10) break; } else { a = irnd(100, 190); b = irnd(20, 99); if (a > b && b % 10 > a % 10) break; } } ans = a - b; }
+  const op = sub ? '−' : '+';
+  return { vis: `<span class="eq">${a} ${op} ${b} ＝ ？</span>${hissan(a, b, op, ans)}`, text: sub ? 'ひき算' : 'たし算', say: `${a} ${sub ? 'ひく' : 'たす'} ${b} は？`,
+    choices: numChoices(ans, [ans + 10, ans - 10, ans + 1, ans - 1, ans + 2, ans - 2, ans + 20, ans - 20]), ansSay: String(ans) };
+}
+function qKanji() {
+  const w = pick(KANJI), three = [w], used = new Set([w[1]]);
+  for (const x of shuffle(KANJI)) { if (three.length >= 3) break; if (!used.has(x[1])) { used.add(x[1]); three.push(x); } }
+  return { vis: `<span class="kanji">${w[0]}</span>`, text: 'この かん字の よみかたは？', say: 'この かんじの よみかたは？', choices: three.map(x => ({ label: x[1], correct: x === w })), ansSay: w[1] };
+}
+function timeLabel(h, m, half) { if (m === 0) return `${h}じ`; if (m === 30 && half) return `${h}じはん`; return `${h}じ${m}${m % 10 === 5 ? 'ふん' : 'ぷん'}`; }
+function clockSVG(h, m) {
+  const ha = ((h % 12) + m / 60) * 30, ma = m * 6;
+  let s = `<svg viewBox="-60 -60 120 120"><circle r="57" fill="#fff" stroke="#7df9ff" stroke-width="4"/>`;
+  for (let i = 1; i <= 12; i++) { const t = i * Math.PI / 6; s += `<text x="${(Math.sin(t) * 43).toFixed(1)}" y="${(-Math.cos(t) * 43 + 4.5).toFixed(1)}" font-size="13" font-weight="bold" text-anchor="middle" fill="#263238">${i}</text>`; }
+  s += `<line x1="0" y1="0" x2="0" y2="-28" stroke="#d81b60" stroke-width="5" stroke-linecap="round" transform="rotate(${ha})"/><line x1="0" y1="0" x2="0" y2="-42" stroke="#1565c0" stroke-width="3.5" stroke-linecap="round" transform="rotate(${ma})"/>`;
+  return s + `<circle r="3.5" fill="#263238"/></svg>`;
+}
+function qClock(tier) {
+  const h = irnd(1, 12), m = tier === 0 ? pick([0, 30]) : pick([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]), half = tier === 0;
+  const lab = (hh, mm) => timeLabel(((hh + 11) % 12) + 1, mm, half), ans = lab(h, m);
+  const cands = [[h + 1, m], [h - 1, m], [h, (m + 30) % 60], [h, (m + 5) % 60], [h, (m + 55) % 60], [m === 0 ? 12 : m / 5, (h * 5) % 60]], set = [ans];
+  for (const [hh, mm] of shuffle(cands)) { const l = lab(hh, mm); if (!set.includes(l) && set.length < 3) set.push(l); }
+  return { vis: clockSVG(h, m), text: 'なんじ なんぷん？', say: 'なんじ なんぷんかな？', choices: set.map(l => ({ label: l, correct: l === ans })), ansSay: ans };
+}
+function makeQuestion(kind, tier) {
+  if (kind === 'mix') kind = pick(['mul', 'calc', 'kanji', 'clock']);
+  return kind === 'mul' ? qMul(tier) : kind === 'calc' ? qCalc(tier) : kind === 'kanji' ? qKanji() : qClock(tier);
+}
+// 読み上げ
+let jaVoice = null;
+function loadVoice() { if (window.speechSynthesis) jaVoice = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)) || null; }
+if (window.speechSynthesis) { loadVoice(); speechSynthesis.onvoiceschanged = loadVoice; }
+function say(t) { if (!window.speechSynthesis) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'ja-JP'; u.rate = .95; if (jaVoice) u.voice = jaVoice; speechSynthesis.speak(u); } catch (e) {} }
+const sfxOk = () => { tone(660, .12, 'square', .08); setTimeout(() => tone(990, .25, 'square', .08), 110); setTimeout(() => tone(1320, .35, 'square', .08), 230); };
+const sfxNg = () => tone(220, .4, 'square', .1, 120);
+
+// ゲート：3まいの こたえの かんばん。画面の 左・まん中・右（＝ lat が +6 / 0 / -6）
+const GATE_LAT = [6, 0, -6], GATE_COL = ['#1e88e5', '#43a047', '#fb8c00'];
+let learnKind = 'mix', tStars = 0, tq = null, tWrong = 0, tRetry = false, tGate = null, tPhase = 'wait', tT = 0, tOk = 0, tTotal = 0, tCombo = 0, tSession = 0;
+try { learnKind = localStorage.getItem('turbo.learn') || 'mix'; tStars = parseInt(localStorage.getItem('turbo.stars') || '0', 10) || 0; } catch (e) {}
+function boardTex(label, col) {
+  return canvasTex(512, 224, (g, w, h) => {
+    g.fillStyle = col; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.95)'; g.fillRect(14, 14, w - 28, h - 28); g.fillStyle = col; g.fillRect(24, 24, w - 48, h - 48);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; let fs = 150; g.font = `900 ${fs}px "Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif`;
+    while (g.measureText(label).width > w - 70 && fs > 40) { fs -= 6; g.font = `900 ${fs}px "Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif`; }
+    g.lineWidth = 10; g.strokeStyle = 'rgba(0,0,0,.35)'; g.strokeText(label, w / 2, h / 2 + 6); g.fillText(label, w / 2, h / 2 + 6);
+  });
+}
+// コース上の index i0〜i1 の あいだ、道のよこ位置 a〜b に 帯をしく
+function laneStrip(i0, i1, a, b, mat) {
+  const pos = [], idx = []; let n = 0;
+  for (let k = i0; k <= i1; k++) { const i = ((k % N) + N) % N; pos.push(...off(i, a, .04), ...off(i, b, .04)); if (n) { const q = (n - 1) * 2; idx.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); } n++; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+// まっすぐに近い所を さがして ゲートを置く（240〜560m 先）
+function findGateIdx(from) {
+  let best = from + 80, bv = 1e9;
+  for (let d = 60; d <= 140; d += 2) { let m = 0; for (let k = -14; k <= 4; k++) m = Math.max(m, TR.akap[((from + d + k) % N + N) % N]); if (m < 1 / 140) return from + d; if (m < bv) { bv = m; best = from + d; } }
+  return best;
+}
+function spawnGate() {
+  if (!tRetry) { tq = makeQuestion(learnKind, Math.min(2, Math.floor(tSession / 4))); tWrong = 0; }
+  const gc = Math.round(findGateIdx(Math.round(player.cum))), gi = ((gc % N) + N) % N, t = trackAt(gi), grp = new THREE.Group(), ang = Math.atan2(t.tx, t.tz);
+  const order = shuffle(tq.choices), hint = tWrong >= 2, boards = [];
+  order.forEach((c, k) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.36), new THREE.MeshBasicMaterial({ map: boardTex(c.label, GATE_COL[k]), side: THREE.DoubleSide, toneMapped: false }));
+    const p = off(gi, GATE_LAT[k], 4.5); m.position.set(...p); m.rotation.y = ang + Math.PI; grp.add(m); boards.push(m);
+    const pad = laneStrip(gc - 16, gc, GATE_LAT[k] + 2.6, GATE_LAT[k] - 2.6, new THREE.MeshBasicMaterial({ color: GATE_COL[k], transparent: true, opacity: .32, depthWrite: false, side: THREE.DoubleSide })); grp.add(pad);
+    if (hint && c.correct) m.userData.hint = true;
+  });
+  // ゲートの わく（柱と はり）
+  const steel = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: .6, roughness: .35 }), W2 = WALL_D - .3;
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(W2 * 2, .5, .6), steel); beam.position.set(t.x, 6.1, t.z); beam.rotation.y = ang + Math.PI / 2; grp.add(beam);
+  for (const s of [1, -1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(.5, 6.3, .5), steel); post.position.set(...off(gi, s * W2, 3.15)); grp.add(post); }
+  scene.add(grp);
+  tGate = { grp, boards, order, cum: gc };
+  showQuiz(); say(tq.say); tPhase = 'gate';
+}
+function removeGate() { if (!tGate) return; const g = tGate.grp; scene.remove(g); g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); tGate = null; }
+function showQuiz() {
+  $('qvis').innerHTML = tq.vis; $('qtext').textContent = tq.text;
+  $('qchips').innerHTML = tGate.order.map((c, k) => `<span class="qchip${tWrong >= 2 && c.correct ? ' hint' : ''}" style="background:${GATE_COL[k]}">${c.label}</span>`).join('');
+  $('quiz').classList.remove('hidden');
+}
+function renderStars() { $('qStars').textContent = `⭐ ${tStars}　せいかい ${tOk}/${tTotal}` + (tCombo >= 2 ? `　COMBO ×${tCombo}` : ''); }
+function turboStart() {
+  removeGate(); tPhase = 'wait'; tT = 2.5; tOk = 0; tTotal = 0; tCombo = 0; tSession = 0; tRetry = false; tq = null;
+  $('quiz').classList.add('hidden'); $('qStars').classList.remove('hidden'); renderStars(); say(' ');
+}
+function turboStop() { removeGate(); tPhase = 'off'; $('quiz').classList.add('hidden'); if (window.speechSynthesis) speechSynthesis.cancel(); }
+function turboJudge() {
+  let k = 0, bd = 1e9; GATE_LAT.forEach((l, j) => { const d = Math.abs((player.lat || 0) - l); if (d < bd) { bd = d; k = j; } });
+  const ok = tGate.order[k].correct; tTotal++;
+  if (ok) {
+    tOk++; tSession++; tStars++; tCombo++; tRetry = false;
+    player.boostT = Math.max(player.boostT, 2.6 + Math.min(tCombo - 1, 3) * .4);
+    try { localStorage.setItem('turbo.stars', String(tStars)); } catch (e) {}
+    sfxOk(); setTimeout(sfxBoost, 250); showMsg(tCombo >= 2 ? `NITRO! ×${tCombo}` : 'NITRO!', '#ffd740');
+    $('flash').style.transition = 'none'; $('flash').style.background = '#ffd740'; $('flash').style.opacity = .35; requestAnimationFrame(() => { $('flash').style.transition = 'opacity .6s'; $('flash').style.opacity = 0; });
+    say(`せいかい！ こたえは ${tq.ansSay}`); tT = 2.2;
+  } else {
+    tWrong++; tCombo = 0; tRetry = true; player.vx *= .55; player.vz *= .55; player.vf *= .55; shake = Math.max(shake, .7); sfxNg();
+    showMsg('MISS!', '#ff5252'); say('おしい！ もういちど'); tT = 1.6;
+  }
+  $('quiz').classList.add('hidden'); renderStars(); tPhase = 'wait';
+  const g = tGate; tGate = null; setTimeout(() => { tGate = g; removeGate(); }, 1500);
+}
+function turboUpdate(dt) {
+  if (tPhase === 'off') return;
+  if (tPhase === 'wait') { tT -= dt; if (tT <= 0) spawnGate(); return; }
+  if (tGate) {
+    const pulse = .5 + .5 * Math.sin(clockT * 8);
+    tGate.boards.forEach(b => { if (b.userData.hint) b.scale.setScalar(1 + pulse * .12); });
+    if (player.cumF >= tGate.cum) turboJudge();
+  }
+}
+function turboResultRows() { return `<tr><td>もんだい せいかい</td><td>${tOk} / ${tTotal}</td></tr><tr><td>⭐ ぜんぶで</td><td>${tStars}</td></tr>`; }
+if (TURBO) {
+  document.body.classList.add('turbo'); document.title = 'TURBO DRIVE';
+  $('menu').querySelector('h1').textContent = 'TURBO DRIVE'; $('menu').querySelector('.sub').textContent = '走りながら ゲートで こたえよう。せいかいで ニトロ発動！';
+  if (!BUILTIN[courseSel] || !BUILTIN[courseSel].turbo) { courseSel = 'pass'; syncCourseUI(); }
+  $('learnRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.learn === learnKind));
+  bindGroup('learnRow', 'learn', v => { learnKind = v; try { localStorage.setItem('turbo.learn', v); } catch (e) {} });
+  $('qSay').addEventListener('click', () => tq && say(tq.say));
+}
+
+window.__apex = { turboDbg: () => ({ tPhase, tT, gate: tGate && tGate.cum, ans: tGate && GATE_LAT[tGate.order.findIndex(c => c.correct)], cum: player && player.cumF, ok: tOk, total: tTotal }), BUILTIN, buildTR, edSpline, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
