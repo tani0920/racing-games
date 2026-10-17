@@ -1,9 +1,9 @@
 {
-  "id": "./apex-racing.html?turbo",
+  "id": "./turbo-drive.html",
   "name": "TURBO DRIVE",
   "short_name": "TURBO",
   "description": "走りながら小2の問題に答えるレースゲーム",
-  "start_url": "./apex-racing.html?turbo",
+  "start_url": "./turbo-drive.html",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "any",

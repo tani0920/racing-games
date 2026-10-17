@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="APEX">
 <meta name="theme-color" content="#0b0d14">
 <script>/* TURBO DRIVE で ひらいたときは ホーム画面の アイコンと 名前を TURBO 用にする */
-if (/[?&]turbo\b/.test(location.search)) { document.title = 'TURBO DRIVE';
+if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { document.title = 'TURBO DRIVE';
   const q = (sel, at, v) => { const e = document.querySelector(sel); if (e) e.setAttribute(at, v); };
   q('link[rel="manifest"]', 'href', 'turbo.webmanifest'); q('link[rel="apple-touch-icon"]', 'href', 'turbo-touch-icon.png'); q('link[rel="icon"]', 'href', 'turbo-icon-192.png');
   q('meta[name="apple-mobile-web-app-title"]', 'content', 'TURBO'); q('meta[name="theme-color"]', 'content', '#143d2f'); }
@@ -282,7 +282,7 @@ const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 /* =============== コース生成（入り組んだ周回コース） =============== */
 // ?turbo で ひらくと TURBO DRIVE（がくしゅうモード）になる
-const TURBO = /[?&]turbo\b/.test(location.search);
+const TURBO = /[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname);
 const ROAD_W = 18, WALL_D = ROAD_W / 2 + 7;
 function presetPoints() {
   const g = (t, t0, s) => { const d = angDiff(t, t0); return Math.exp(-d * d / (2 * s * s)); };
