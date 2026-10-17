@@ -106,7 +106,7 @@
   <div id="msg" class="it"></div>
   <div id="touch" class="hidden">
     <div class="g"><button id="tL">◀</button><button id="tR">▶</button></div>
-    <div class="g"><button id="tHB">DRIFT</button><button id="tGas">GAS</button></div>
+    <div class="g"><button id="tHB">ドリフト</button><button id="tGas">アクセル</button></div>
   </div>
   <div id="pause" class="it hidden">PAUSE</div>
 </div>
@@ -659,7 +659,7 @@ function simulate(dt) {
   }
   raceT += dt;
   const inpRaw = readInput(); let inp = inpRaw;
-  if (finished) inp = { steer: 0, thr: 0, brk: player.vf > 1.5 ? .35 : 0, hb: 0 };
+  if (finished) { const fi = player.idx, ft = Math.atan2(TR.tx[(fi + 6) % N], TR.tz[(fi + 6) % N]); inp = { steer: clamp(.05 * (player.lat || 0) + 1.6 * angDiff(player.h, ft), -1, 1), thr: 0, brk: 0, hb: 0 }; }
   player.steer += (inp.steer - player.steer) * Math.min(1, (Math.abs(inp.steer) > Math.abs(player.steer) ? 9 : 14) * dt);
   inp = { steer: player.steer, thr: inp.thr, brk: inp.brk, hb: inp.hb };
   player.brkLight = inp.brk > 0 ? 1 : 0; player.hbOn = inp.hb;
