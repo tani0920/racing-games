@@ -134,6 +134,9 @@
   }
   #tiltDlg { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.6); }
   #tiltDlg.hidden { display: none !important; }
+  /* メニュー：えらんだ車が見えるように、ボタンは 横長の画面なら右・縦長の画面なら下 によせる */
+  @media (min-aspect-ratio: 5/4) { #menu { left: auto; width: min(620px, 58vw); background: linear-gradient(90deg, rgba(5,8,18,0), rgba(5,8,18,.8) 14%, rgba(5,8,18,.88)); } #menu h1 { font-size: clamp(30px, 5.6vw, 72px); white-space: nowrap; } }
+  @media (max-aspect-ratio: 5/4) { #menu { top: 34vh; background: linear-gradient(rgba(5,8,18,0), rgba(5,8,18,.82) 7%, rgba(5,8,18,.9)); } }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -1231,6 +1234,7 @@ function frame(now) {
   const rdt = Math.min((now - last) / 1000, .1); last = now; clockT += rdt;
   fxUpdate(rdt);
   if (state === 'menu') { menuCam(rdt); draw(); return; }
+  if (camera.view && camera.view.enabled) camera.clearViewOffset();
   if (state === 'replay') { replayStep(rdt); if (state === 'replay') updateVisuals(rdt); draw(); return; }
   if (!paused) { acc += rdt; let n = 0; while (acc >= FIXED && n++ < 6) { acc -= FIXED; simulate(FIXED); } if (n >= 6) acc = 0; }
   updateVisuals(rdt);
@@ -1372,8 +1376,14 @@ function drawMini() {
   ais.forEach(a => dot(a.x, a.z, '#ff5252', 8)); if (player) { dot(player.x, player.z, '#ffca28', 11); mg.strokeStyle = '#000'; mg.lineWidth = 3; mg.stroke(); }
 }
 function menuCam(rdt) {
-  const t = window.__carAng != null ? window.__carAng : clockT * .12, p = trackAt(0), cr = window.__carAng != null ? 7.5 : 30;
-  camera.position.set(p.x + Math.cos(t) * cr + (cr > 10 ? 10 : 0), cr > 10 ? 5 : 2.2, p.z + Math.sin(t) * cr); camera.lookAt(p.x, cr > 10 ? 1.2 : .7, p.z);
+  // ボタンに かくれていない所（左 or 上）の まん中に 車が来るように カメラをずらす
+  const W = innerWidth, H = innerHeight, mr = $('menu').getBoundingClientRect();
+  let fx = W / 2, fy = H / 2, fw = W, fh = H;
+  if (mr.width > 0 && mr.left > 40) { fw = mr.left; fx = fw / 2; } else if (mr.height > 0 && mr.top > 40) { fh = mr.top; fy = fh / 2; }
+  camera.setViewOffset(W, H, W / 2 - fx, H / 2 - fy, W, H);
+  const tf = Math.tan(camera.fov * Math.PI / 360), cr = Math.min(16, Math.max(5.5, 3.2 / (tf * fw / H), 1.9 / (tf * fh / H)));
+  const t = window.__carAng != null ? window.__carAng : clockT * .12, p = trackAt(0);
+  camera.position.set(p.x + Math.cos(t) * cr, .7 + cr * .1, p.z + Math.sin(t) * cr); camera.lookAt(p.x, .9, p.z);   // 低めのカメラで 車の後ろの景色も入れる
   if (!menuCar) { menuCar = makeCar(selCar, CAR_COLORS[selColor]); menuCar.root.position.set(p.x, 0, p.z); menuCar.root.rotation.y = Math.atan2(p.tx, p.tz); scene.add(menuCar.root); }
   sky.position.copy(camera.position); sunSpr.position.copy(camera.position).addScaledVector(SUN_DIR, 1700); sunLight.position.set(p.x + SUN_DIR.x * 90, SUN_DIR.y * 90, p.z + SUN_DIR.z * 90); sunLight.target.position.set(p.x, 0, p.z);
 }
@@ -1564,6 +1574,7 @@ function openEditor() {
 function syncCourseUI() {
   $('courseRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.course === courseSel));
   $('customName').textContent = customCourse ? customCourse.name : '作る・えらぶ';
+  if (state === 'menu') ensureCourse();   // えらんだコースの景色に すぐ切りかえる
 }
 function closeEditor() { $('editor').classList.add('hidden'); $('edList').classList.add('hidden'); $('edShareBox').classList.add('hidden'); syncCourseUI(); }
 $('courseRow').querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { if (b.dataset.course === 'custom') { openEditor(); } else { courseSel = b.dataset.course; syncCourseUI(); } }));
