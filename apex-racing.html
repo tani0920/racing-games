@@ -48,6 +48,8 @@
   #touch button { pointer-events: auto; width: 82px; height: 82px; border-radius: 22px; font-size: 16px; font-weight: bold; font-family: inherit;
     border: 2px solid rgba(255,255,255,.6); background: rgba(10,12,22,.5); color: #fff; }
   #touch button#tHB, #touch button#tGas { width: clamp(110px, 21vw, 190px); height: clamp(110px, 21vw, 190px); font-size: clamp(20px, 3.4vw, 30px); border-radius: 30px; }
+  #touch .col { display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  #touch button#tBrk { width: clamp(110px, 21vw, 190px); height: clamp(64px, 11vw, 100px); font-size: clamp(18px, 3vw, 26px); border-radius: 24px; border-color: #ff5252; }
   #touch button.on { background: rgba(0,170,255,.6); }
 
   #menu, #result { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; overflow: auto;
@@ -107,7 +109,7 @@
   <div id="msg" class="it"></div>
   <div id="touch" class="hidden">
     <div class="g"><button id="tL">◀</button><button id="tR">▶</button></div>
-    <div class="g"><button id="tHB">ドリフト</button><button id="tGas">アクセル</button></div>
+    <div class="g"><div class="col" id="tHBcol"><button id="tBrk" class="brk">ブレーキ</button><button id="tHB">ドリフト</button></div><button id="tGas">アクセル</button></div>
   </div>
   <div id="pause" class="it hidden">PAUSE</div>
 </div>
@@ -831,7 +833,7 @@ $('go').addEventListener('click', async () => {
 $('again').addEventListener('click', startRace);
 function applyTiltUI() { const t = steerMode === 'tilt';
   const gl = $('tL').parentNode, gr = $('tGas').parentNode;
-  if (t) gl.appendChild($('tHB')); else gr.insertBefore($('tHB'), $('tGas')); $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
+  if (t) gl.appendChild($('tHBcol')); else gr.insertBefore($('tHBcol'), $('tGas')); $('tL').classList.toggle('hidden', t); $('tR').classList.toggle('hidden', t); $('tiltBtn').classList.toggle('hidden', !t); $('tiltInvBtn').classList.toggle('hidden', !t); }
 $('tiltBtn').addEventListener('click', () => { tiltZero = tiltRoll; showMsg('センター合わせ', '#80deea'); });
 $('tiltInvBtn').addEventListener('click', () => { tiltInv = !tiltInv; try { localStorage.setItem('apex.tiltInv', tiltInv ? '1' : '0'); } catch (e) {} showMsg(tiltInv ? '傾き: 反転' : '傾き: 標準', '#80deea'); });
 function toMenu() { state = 'menu'; bgmStop(); stopFx();  if (ac) { engG.gain.value = 0; tireG.gain.value = 0; } if (player) { scene.remove(player.car.root); player = null; } ais.forEach(a => scene.remove(a.car.root)); ais = []; $('hud').classList.add('hidden'); $('result').classList.add('hidden'); $('menu').classList.remove('hidden'); $('msg').classList.remove('sticky'); $('msg').style.opacity = 0; renderBest(); }
@@ -842,7 +844,7 @@ function cycleCam() { camMode = (camMode + 1) % 3; }
 $('camBtn').addEventListener('click', cycleCam); $('bgmBtn').addEventListener('click', toggleBgm);
 function respawn() { if (!player || state !== 'racing') return; tiltZero = tiltRoll; const t = trackAt(player.cumF); player.x = t.x; player.z = t.z; player.h = Math.atan2(t.tx, t.tz); player.vx = player.vz = 0; player.loose = 0; player.steer = 0; camInit = false; }
 function hold(id, k) { const el = $(id), on = e => { e.preventDefault(); tch[k] = 1; el.classList.add('on'); audioInit(); }, off = e => { e.preventDefault(); tch[k] = 0; el.classList.remove('on'); }; el.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, off)); }
-hold('tL', 'l'); hold('tR', 'r'); hold('tGas', 'gas'); hold('tHB', 'hb');
+hold('tL', 'l'); hold('tR', 'r'); hold('tGas', 'gas'); hold('tHB', 'hb'); hold('tBrk', 'brk');
 const KM = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'gas', w: 'gas', W: 'gas', ArrowDown: 'brk', s: 'brk', S: 'brk', ' ': 'hb' };
 addEventListener('keydown', e => { if (KM[e.key]) { keys[KM[e.key]] = 1; e.preventDefault(); } if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause(); if (e.key === 'c' || e.key === 'C') cycleCam(); if (e.key === 'm' || e.key === 'M') toggleBgm(); if (e.key === 'r' || e.key === 'R') respawn(); });
 addEventListener('keyup', e => { if (KM[e.key]) keys[KM[e.key]] = 0; });
