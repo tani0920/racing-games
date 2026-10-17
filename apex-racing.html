@@ -115,6 +115,7 @@
   <h1 class="it">APEX RACING</h1>
   <div class="sub">3D CIRCUIT × DRIFT</div>
   <div id="best"></div>
+  <div id="menuNote" class="hidden" style="font-size:16px;font-weight:bold;text-align:center"></div>
   <div class="row" id="cars">
     <button class="opt sel" data-car="0">GT クーペ<small>バランス型</small></button>
     <button class="opt" data-car="1">スーパーカー<small>最高速・高グリップ</small></button>
@@ -161,7 +162,7 @@
   <div id="edHelp">タップ＝点をおく　点をドラッグ＝動かす　空き地をドラッグ＝画面移動　ピンチ＝拡大縮小</div>
   <div id="edToast" class="panel hidden"></div>
   <div id="edList" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:8px">保存したコース</div><div id="edListBody"></div><button class="edb" id="edListClose" style="margin-top:10px">閉じる</button></div>
-  <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">コードで共有</div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">このコードを友だちに送ると、同じコースで遊べます。もらったコードは下に貼って「読み込む」。</div><textarea id="edCode" rows="5"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">この文字から読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
+  <div id="edShareBox" class="panel hidden allow"><div class="it" style="font-size:20px;margin-bottom:6px">ほかのデバイス・友だちに送る</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="edb go" id="edSendOne">📤 このコースをリンクで送る</button><button class="edb" id="edSendAll">📦 保存した全コースを送る</button></div><div style="font-size:12px;color:#90a4ae;margin-bottom:6px">送ったリンクを別のiPadやスマホで開くと、コースが自動で保存されます。ホーム画面のアイコンから遊んでいる場合は、届いたリンクやコードを下に貼って「読み込む」を押してください。</div><textarea id="edCode" rows="5"></textarea><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="edb" id="edCopy">コピー</button><button class="edb" id="edImport">読み込む</button><button class="edb" id="edShareClose">閉じる</button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -978,7 +979,7 @@ $('edPreset').addEventListener('change', e => { const k = e.target.value; if (!k
 $('edSave').addEventListener('click', () => {
   if (ED.pts.length < 3) { edToast('点をおいてから保存してね'); return; }
   const name = ($('edName').value.trim() || 'マイコース').slice(0, 20), list = edStore(), entry = { name, pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }, i = list.findIndex(c => c.name === name);
-  if (i >= 0) list[i] = entry; else list.push(entry); edStoreSet(list.slice(-12)); $('edName').value = name; edToast(`「${name}」を保存しました`);
+  if (i >= 0) list[i] = entry; else list.push(entry); edStoreSet(list.slice(-30)); $('edName').value = name; edToast(`「${name}」を保存しました`);
 });
 $('edLoad').addEventListener('click', () => {
   const list = edStore(), box = $('edListBody'); box.innerHTML = '';
@@ -987,7 +988,8 @@ $('edLoad').addEventListener('click', () => {
     const row = document.createElement('div'); row.className = 'lrow'; const nm = document.createElement('span'); nm.textContent = c.name;
     const o = document.createElement('button'); o.className = 'edb'; o.textContent = '開く'; o.onclick = () => { edSet(c.pts, c.name); $('edList').classList.add('hidden'); };
     const d = document.createElement('button'); d.className = 'edb'; d.textContent = '削除'; d.onclick = () => { if (confirm(`「${c.name}」を削除しますか？`)) { const l = edStore(); l.splice(i, 1); edStoreSet(l); $('edLoad').click(); } };
-    row.append(nm, o, d); box.appendChild(row);
+    const sd = document.createElement('button'); sd.className = 'edb'; sd.textContent = '送る'; sd.onclick = () => shareCourses([c], `コース「${c.name}」`);
+    row.append(nm, o, sd, d); box.appendChild(row);
   });
   $('edList').classList.remove('hidden');
 });
@@ -999,7 +1001,9 @@ $('edShare').addEventListener('click', () => {
 $('edShareClose').addEventListener('click', () => $('edShareBox').classList.add('hidden'));
 $('edCopy').addEventListener('click', async () => { const t = $('edCode').value; try { await navigator.clipboard.writeText(t); edToast('コードをコピーしました'); } catch (e) { $('edCode').select(); edToast('選択しました。長押しでコピーしてね'); } });
 $('edImport').addEventListener('click', () => {
-  try { let t = $('edCode').value.trim(); if (t.startsWith('APEX1:')) t = t.slice(6); const o = JSON.parse(decodeURIComponent(escape(atob(t)))); if (!Array.isArray(o.p) || o.p.length < 3 || o.p.length > 200 || !o.p.every(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]))) throw 0;
+  const raw = $('edCode').value.trim();
+  if (/courses=/.test(raw)) { try { const n = importCourses(raw); const l = edStore(); const c = customCourse; if (c) edSet(c.pts, c.name); $('edShareBox').classList.add('hidden'); edToast(n > 0 ? `${n}個のコースを保存しました` : 'もう保存されているコースです'); } catch (e) { edToast('リンクが正しくありません'); } return; }
+  try { let t = raw; if (t.startsWith('APEX1:')) t = t.slice(6); const o = JSON.parse(decodeURIComponent(escape(atob(t)))); if (!Array.isArray(o.p) || o.p.length < 3 || o.p.length > 200 || !o.p.every(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]))) throw 0;
     edSet(o.p.map(q => [+q[0], +q[1]]), String(o.n || 'もらったコース').slice(0, 20)); $('edShareBox').classList.add('hidden'); edToast('コードから読み込みました');
   } catch (e) { edToast('コードが正しくありません'); }
 });
@@ -1008,7 +1012,45 @@ $('edRun').addEventListener('click', () => {
   customCourse = { name: ($('edName').value.trim() || 'オリジナル').slice(0, 20), pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }; courseSel = 'custom';
   closeEditor(); $('go').click();
 });
-syncCourseUI(); ensureCourse();
+// リンクで コースを ほかの デバイスへ
+const validPts = p => Array.isArray(p) && p.length >= 3 && p.length <= 200 && p.every(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]));
+function courseLink(list) {
+  const enc = btoa(unescape(encodeURIComponent(JSON.stringify(list.map(c => ({ n: c.name, p: c.pts })))))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return location.origin + location.pathname + '#courses=' + enc;
+}
+async function shareCourses(list, label) {
+  if (!list.length) { edToast('送るコースがありません'); return; }
+  const url = courseLink(list);
+  if (navigator.share) { try { await navigator.share({ title: 'APEX RACING コース', text: label, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); edToast('リンクをコピーしました。メッセージ等に貼って送ってね'); }
+  catch (e) { $('edCode').value = url; $('edShareBox').classList.remove('hidden'); edToast('リンクを選んでコピーしてね'); }
+}
+// 文字列（リンク）から 受け取って 保存したコースに たす。たした数を かえす
+function importCourses(str) {
+  const m = String(str).match(/courses=([A-Za-z0-9_-]+)/); if (!m) return -1;
+  let b = m[1].replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '=';
+  const arr = JSON.parse(decodeURIComponent(escape(atob(b)))); if (!Array.isArray(arr)) throw 0;
+  const list = edStore(); let added = 0, first = null;
+  for (const o of arr) {
+    if (!o || !validPts(o.p)) continue; const pts = o.p.map(q => [Math.round(+q[0]), Math.round(+q[1])]), key = JSON.stringify(pts);
+    const same = list.find(c => JSON.stringify(c.pts) === key); if (same) { first = first || same; continue; }
+    let name = String(o.n || 'もらったコース').slice(0, 20); while (list.some(c => c.name === name)) name = name.slice(0, 18) + '+';
+    const e = { name, pts }; list.push(e); first = first || e; added++;
+  }
+  edStoreSet(list.slice(-30));
+  if (first) { customCourse = { name: first.name, pts: first.pts.map(p => p.slice()) }; courseSel = 'custom'; syncCourseUI(); }
+  return added;
+}
+function menuNote(t, ok) { const e = $('menuNote'); e.textContent = t; e.style.color = ok ? '#69f0ae' : '#ff8a80'; e.classList.remove('hidden'); setTimeout(() => e.classList.add('hidden'), 9000); }
+function receiveFromHash() {
+  if (!/courses=/.test(location.hash)) return;
+  try { const n = importCourses(location.hash); menuNote(n > 0 ? `📥 コースを${n}個受け取りました！「オリジナルコース」から選べます` : '📥 そのコースはもう保存されています', true); }
+  catch (e) { menuNote('コースのリンクが読み取れませんでした', false); }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+}
+$('edSendOne').addEventListener('click', () => { if (ED.pts.length < 3) { edToast('点をおいてから送ってね'); return; } shareCourses([{ name: ($('edName').value.trim() || 'マイコース').slice(0, 20), pts: ED.pts.map(p => [Math.round(p[0]), Math.round(p[1])]) }], 'このコースで走ろう！'); });
+$('edSendAll').addEventListener('click', () => { const l = edStore(); shareCourses(l, `保存したコース ${l.length}個`); });
+syncCourseUI(); receiveFromHash(); ensureCourse();
 
 /* =============== ゴール演出・リプレイ =============== */
 let rec = [], recN = 0, recLapStart = 0, recPrevLap = 0, repT = 0, repLen = 0, repPaused = false, repSlow = false, repCam = 0, repCamT = 0, repSpot = null, repJust = true;
