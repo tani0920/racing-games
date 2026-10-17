@@ -1,9 +1,12 @@
-車の3Dモデル（Poly Pizza https://poly.pizza より）
-- スーパーカー: "Sports Car" by Quaternius（Public Domain / CC0）
-- ラリー: "Car" by Ray Alez（CC-BY 3.0）
-- GTマシン: "Sports Car" by Quaternius（Public Domain / CC0）
-- フォーミュラ: "Racing car" by scaranto（Public Domain / CC0）
-- ツーリングカー: "Car Hatchback" by Kay Lousberg（Public Domain / CC0）
-- オープンスポーツ: "The Orange Racer" by Owl TeaGames（CC-BY 3.0）
+車の3Dモデル（Sketchfab https://sketchfab.com より・CC-BY 4.0）
+- スーパーカー: "Saba V12 '95" by Daniel Zhabotinsky — https://sketchfab.com/models/3ab977050c334c13b6abb5de078b4957
+- ラリー: "Placeholder MV6 '83" by Daniel Zhabotinsky — https://sketchfab.com/models/d78bdfc34e024ac7926853f9ae863190
+- クラシックGT: "Sanremo '70" by Daniel Zhabotinsky — https://sketchfab.com/models/b2261c471645417a8b7e5882d541c248
+- フォーミュラ: "RaceCar RC-13" by Dahie — https://sketchfab.com/models/09b4b84a869c4726bab6687513b422ca
+- ツーリングカー: "Sialia SW '68 Racemod" by Daniel Zhabotinsky — https://sketchfab.com/models/2e63fb0a8f7e4ea9b3cbf796e8373d49
+- オープンスポーツ: "Lolita '91" by Daniel Zhabotinsky — https://sketchfab.com/models/128691a403ec4dd5af28c2e7c9037a3a
+変更点: テクスチャを512pxに縮小し、ゲーム内で塗装色を変更しています。
+ライセンス: https://creativecommons.org/licenses/by/4.0/
+
 - GTクーペ: ChatGPTで描いた絵を TRELLIS（MIT）で3D化
 CC-BY のものは、ゲーム内メニューにも作者名を表示しています。
