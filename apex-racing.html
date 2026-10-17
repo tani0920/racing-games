@@ -121,10 +121,10 @@
   <div id="menuNote" class="hidden" style="font-size:16px;font-weight:bold;text-align:center"></div>
   <div class="row" id="cars">
     <button class="opt sel" data-car="0">GT クーペ<small>バランス型</small></button>
-    <button class="opt" data-car="1">スーパーカー<small>最高速・高グリップ</small></button>
+    <button class="opt" data-car="1">スーパーカー<small>加速と最高速</small></button>
     <button class="opt" data-car="2">ラリー<small>ドリフトしやすい</small></button>
     <button class="opt" data-car="3">GTマシン<small>GT500風・大きなウイング</small></button>
-    <button class="opt" data-car="4">フォーミュラ<small>F1風・いちばん速い</small></button>
+    <button class="opt" data-car="4">フォーミュラ<small>F1風・よく曲がる／滑りにくい</small></button>
     <button class="opt" data-car="5">ツーリングカー<small>TCR風・ハッチバック</small></button>
     <button class="opt" data-car="6">オープンスポーツ<small>屋根なし・軽快</small></button>
   </div>
@@ -132,6 +132,9 @@
   <div class="row" id="modes">
     <button class="opt sel" data-mode="race">レース<small>AI 5台</small></button>
     <button class="opt" data-mode="ta">タイムアタック<small>ひとりで走る</small></button>
+  </div>
+  <div class="row" id="diffRow">
+    <button class="opt" data-diff="easy">やさしい<small>AIがゆっくり</small></button><button class="opt" data-diff="normal">ふつう</button><button class="opt" data-diff="hard">むずかしい<small>AIが本気</small></button>
   </div>
   <div class="row" id="laps">
     <button class="opt sel" data-laps="3">3 周</button><button class="opt" data-laps="5">5 周</button><button class="opt" data-laps="1">1 周</button>
@@ -396,10 +399,10 @@ const CAR_SPECS = [
     cabin: [[.85,.98],[.25,1.40],[-.75,1.43],[-1.40,1.10],[-1.50,.98]], wing: 1.5, sc: { accel: 9.5, power: 300, drag: .000875, steerRate: 2.1, latG: 19, grip: 9, gripHB: 1.5 } },
   { name: 'SUPER', W: 2.05, wr: .36, wx: .96, wf: 1.38, wrz: -1.38, ride: -.02,
     body: [[2.25,.26],[2.30,.45],[2.10,.62],[1.40,.72],[.70,.84],[.20,.92],[-.90,1.02],[-1.70,1.02],[-2.20,.95],[-2.28,.60],[-2.20,.30],[-1.0,.22],[1.0,.22]],
-    cabin: [[.90,.84],[.35,1.20],[-.40,1.27],[-1.10,1.00],[-1.20,.95]], wing: 1.45, sc: { accel: 10.5, power: 360, drag: .00082, steerRate: 2.0, latG: 22, grip: 10, gripHB: 1.6 } },
+    cabin: [[.90,.84],[.35,1.20],[-.40,1.27],[-1.10,1.00],[-1.20,.95]], wing: 1.45, sc: { accel: 10, power: 316, drag: .00082, steerRate: 2.0, latG: 20, grip: 10, gripHB: 1.6 } },
   { name: 'RALLY', W: 1.85, wr: .38, wx: .86, wf: 1.3, wrz: -1.3, ride: .1,
     body: [[2.10,.34],[2.15,.55],[2.0,.78],[1.4,.88],[.90,.95],[-1.9,1.0],[-2.1,.9],[-2.12,.5],[-2.0,.36],[-1.0,.30],[1.0,.30]],
-    cabin: [[.90,.95],[.35,1.55],[-1.5,1.62],[-2.0,1.0]], wing: 1.85, sc: { accel: 9.0, power: 270, drag: .00092, steerRate: 2.3, latG: 16.5, grip: 7.5, gripHB: 1.3 } }
+    cabin: [[.90,.95],[.35,1.55],[-1.5,1.62],[-2.0,1.0]], wing: 1.85, sc: { accel: 9.3, power: 287, drag: .00092, steerRate: 2.3, latG: 17.5, grip: 7.5, gripHB: 1.3 } }
 ];
 const CAR_COLORS = ['#d50000', '#1565c0', '#ffd600', '#00c853', '#ff6d00', '#e0e0e0', '#7b1fa2', '#111111'];
 function extrudeProfile(pts, width, bevel) {
@@ -594,10 +597,10 @@ function buildFormula(sp, color) {
   return done(k, sp, P);
 }
 CAR_SPECS.push(
-  { name: 'GT500', W: 2.1, wr: .36, wx: .92, def: 0, build: buildGT500, sc: { accel: 11, power: 400, drag: .0008, steerRate: 2.1, latG: 23, grip: 10.5, gripHB: 1.6 } },
-  { name: 'FORMULA', W: 1.9, wr: .36, wx: .8, def: 8, build: buildFormula, sc: { accel: 12.5, power: 450, drag: .00078, steerRate: 2.25, latG: 27, grip: 12, gripHB: 1.9 } },
-  { name: 'TCR', W: 2.0, wr: .35, wx: .9, def: 1, build: buildTCR, sc: { accel: 9.2, power: 280, drag: .0009, steerRate: 2.25, latG: 18, grip: 8.5, gripHB: 1.4 } },
-  { name: 'ROADSTER', W: 1.86, wr: .33, wx: .8, def: 1, build: buildRoadster, sc: { accel: 10, power: 300, drag: .00085, steerRate: 2.3, latG: 21, grip: 9.5, gripHB: 1.5 } }
+  { name: 'GT500', W: 2.1, wr: .36, wx: .92, def: 0, build: buildGT500, sc: { accel: 10, power: 309, drag: .0008, steerRate: 2.1, latG: 20.5, grip: 10.5, gripHB: 1.6 } },
+  { name: 'FORMULA', W: 1.9, wr: .36, wx: .8, def: 8, build: buildFormula, sc: { accel: 10.5, power: 321, drag: .00078, steerRate: 2.25, latG: 21.5, grip: 12, gripHB: 1.9 } },
+  { name: 'TCR', W: 2.0, wr: .35, wx: .9, def: 1, build: buildTCR, sc: { accel: 9.4, power: 294, drag: .0009, steerRate: 2.25, latG: 18.5, grip: 8.5, gripHB: 1.4 } },
+  { name: 'ROADSTER', W: 1.86, wr: .33, wx: .8, def: 1, build: buildRoadster, sc: { accel: 9.8, power: 302, drag: .00085, steerRate: 2.3, latG: 20, grip: 9.5, gripHB: 1.5 } }
 );
 
 /* =============== ゲームじょうたい =============== */
@@ -622,11 +625,11 @@ function startRace() {
   const slot = 2;
   player = newPlayerState(si); player.car = makeCar(si, CAR_COLORS[selColor]); scene.add(player.car.root);
   placeOnGrid(player, selMode === 'race' ? slot : 0, selMode === 'race' ? -3 : 0);
-  ais = [];
+  ais = []; setAiPace(si);
   if (selMode === 'race') {
     const cols = shuffle(CAR_COLORS.filter((_, i) => i !== selColor)).concat(['#ff4081']);
     let k = 0;
-    for (let s = 0; s < 6; s++) { if (s === slot) continue; const a = { s: 0, v: 0, skill: rnd(.9, 1.0) - k * .012, lane: (s % 2 ? 1 : -1) * rnd(1.5, 4.5), off: 0, car: makeCar(Math.floor(Math.random() * CAR_SPECS.length), cols[k % cols.length]), finished: false, done: 0 };
+    for (let s = 0; s < 6; s++) { if (s === slot) continue; const a = { s: 0, v: 0, skill: rnd(.97, 1.03) - k * .008, lane: (s % 2 ? 1 : -1) * rnd(1.5, 4.5), off: 0, car: makeCar(Math.floor(Math.random() * CAR_SPECS.length), cols[k % cols.length]), finished: false, done: 0 };
       const sf = -2 - s * 2.6; a.s = sf; const t = trackAt(sf); a.off = (s % 2 ? 3 : -3); scene.add(a.car.root); ais.push(a); k++; }
   }
   raceT = 0; lapStartT = 0; lapTimes = []; finished = false; finishRank = 0; paused = false; driftTotal = 0; wrongT = 0; camInit = false; lastLapShown = 0;
@@ -772,9 +775,15 @@ function wallCollide(c) {
 }
 
 /* =============== AI =============== */
+// AIの速さ：プレイヤーの車の性能 × 難易度
+// [最高速の割合, コーナーの速さの割合]。ふつう＝もとのGTクーペ対AIと同じくらいの手ごたえ
+const DIFF = { easy: [.9, .78], normal: [.95, .86], hard: [1.0, .95] };
+let selDiff = 'normal'; try { selDiff = localStorage.getItem('apex.diff') || 'normal'; } catch (e) {} if (!DIFF[selDiff]) selDiff = 'normal';
+let aiPace = { v: 66, g: 16 };
+function setAiPace(si) { const sc = CAR_SPECS[si].sc, d = DIFF[selDiff]; aiPace = { v: Math.cbrt(sc.power / sc.drag) * d[0], g: sc.latG * d[1] }; }
 function updateAI(a, dt, dtP) {
-  const i0 = Math.floor(a.s); let vt = 70 * a.skill;
-  for (let j = 0; j <= 28; j++) { const k = ((i0 + j) % N + N) % N, vc = Math.sqrt(17 * a.skill / Math.max(TR.akap[k], 1e-4)), dist = j * TR.ds; vt = Math.min(vt, Math.sqrt(vc * vc + 2 * 20 * dist)); }
+  const i0 = Math.floor(a.s); let vt = aiPace.v * a.skill;
+  for (let j = 0; j <= 28; j++) { const k = ((i0 + j) % N + N) % N, vc = Math.sqrt(aiPace.g * a.skill / Math.max(TR.akap[k], 1e-4)), dist = j * TR.ds; vt = Math.min(vt, Math.sqrt(vc * vc + 2 * 20 * dist)); }
   // ゴムバンド
   if (player) { const gap = (a.s - player.cumF) * TR.ds; if (gap > 80) vt *= .93; else if (gap < -80) vt *= 1.05; }
   if (state === 'countdown') vt = 0;
@@ -973,7 +982,7 @@ async function enableTilt() {
 /* =============== UI =============== */
 { const row = $('colors'); CAR_COLORS.forEach((c, i) => { const b = document.createElement('div'); b.className = 'sw' + (i === 0 ? ' sel' : ''); b.style.background = c; b.addEventListener('click', () => { selColor = i; row.querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === i)); refreshMenuCar(); }); row.appendChild(b); }); }
 function bindGroup(id, attr, fn) { $(id).querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => { $(id).querySelectorAll('.opt').forEach(e => e.classList.remove('sel')); b.classList.add('sel'); fn(b.dataset[attr]); })); }
-bindGroup('steerRow', 'steer', v => steerMode = v); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('laps', 'laps', v => selLaps = +v);
+bindGroup('steerRow', 'steer', v => steerMode = v); bindGroup('cars', 'car', v => { selCar = +v; const d = CAR_SPECS[selCar].def; if (d != null) { selColor = d; $('colors').querySelectorAll('.sw').forEach((e, k) => e.classList.toggle('sel', k === d)); } refreshMenuCar(); }); bindGroup('modes', 'mode', v => selMode = v); bindGroup('diffRow', 'diff', v => { selDiff = v; try { localStorage.setItem('apex.diff', v); } catch (e) {} }); $('diffRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.diff === selDiff)); bindGroup('laps', 'laps', v => selLaps = +v);
 function renderBest() { $('best').textContent = bestLap ? '🏆 ベストラップ ' + fmt(bestLap) : ''; } renderBest();
 $('go').addEventListener('click', async () => {
   audioInit(); if (menuCar) { scene.remove(menuCar.root); menuCar = null; }
