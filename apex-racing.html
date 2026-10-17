@@ -99,6 +99,39 @@
   #bgmName { position: fixed; left: 18px; bottom: 112px; font-size: 16px; color: #ffe082; text-shadow: 0 2px 6px rgba(0,0,0,.6); opacity: 0; pointer-events: none; }
   #bgmName.fadeout { animation: bgmfade 5s ease-out; }
   @keyframes bgmfade { 0% { opacity: 0; transform: translateX(-20px); } 10% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* メニュー・結果画面：はみ出したら たてにスクロール（入るときは まん中） */
+  #menu, #result { justify-content: flex-start; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #menu > :first-child, #result > :first-child { margin-top: auto; } #menu > :last-child, #result > :last-child { margin-bottom: auto; }
+  #menu, #menu *, #result, #result * { touch-action: pan-y !important; }
+  /* 小さい画面（スマホ） */
+  @media (max-height: 560px), (max-width: 600px) {
+    #menu { gap: 8px; padding: 10px 10px 12px; }
+    #menu h1 { font-size: clamp(30px, 7vw, 46px); } #menu .sub { margin-top: -4px; font-size: 11px; }
+    .opt { min-width: 0; padding: 7px 10px; font-size: 14px; border-radius: 8px; } .opt small { font-size: 10px; margin-top: 1px; }
+    .row { gap: 6px; } .sw { width: 28px; height: 28px; }
+    #go { position: sticky; bottom: 8px; z-index: 2; padding: 12px 48px; font-size: 22px; }
+    #menu .keys { display: none; }
+    #resBox { padding: 10px 14px; } #resBox h2 { font-size: 28px; margin-bottom: 4px; } #resBox table { font-size: 15px; }
+    .big-btn { padding: 10px 26px; font-size: 18px; }
+  }
+  /* スマホ横向き：レース中の表示を 小さく・重ならない位置に */
+  @media (max-height: 500px) {
+    #pos { top: 8px; left: 8px; padding: 4px 10px; } #pos .big { font-size: 30px; } #pos .big small { font-size: 16px; } #pos .lap { font-size: 13px; }
+    #times { top: 8px; padding: 3px 12px; left: 36%; } #sys { gap: 5px; } #times .cur { font-size: 20px; } #times .sub { font-size: 11px; }
+    #miniWrap { top: 8px; right: 8px; padding: 3px; } #mini { width: 96px; height: 96px; }
+    #sys { top: 8px; right: 120px; } .rb { width: 34px; height: 34px; font-size: 14px; }
+    #speedo { right: auto; left: 50%; transform: translateX(-50%); bottom: 6px; min-width: 130px; padding: 2px 12px 5px; }
+    #kmh { font-size: 32px; } #gear { font-size: 18px; margin-top: 8px; } #speedo .u { font-size: 11px; }
+    #drift { left: 8px; bottom: auto; top: 76px; width: 130px; padding: 4px 8px; } #drift .t { font-size: 10px; } #driftScore { font-size: 14px; } #driftBar { height: 8px; }
+    #bgmName { bottom: auto; top: 128px; left: 10px; font-size: 13px; }
+    #touch { bottom: 8px; left: 8px; right: 8px; }
+    #touch button { width: min(17vw, 22vh); height: min(17vw, 22vh); font-size: 14px; }
+    #touch button#tHB, #touch button#tGas { width: min(21vw, 30vh); height: min(21vw, 30vh); font-size: 18px; }
+    #touch button#tBrk { width: min(21vw, 30vh); height: min(11vw, 15vh); font-size: 15px; }
+    #msg { top: 30%; font-size: clamp(32px, 9vh, 60px); }
+    #rpTop { top: 8px; font-size: 15px; padding: 4px 12px; } #rpBar { bottom: 8px; padding: 6px 10px; }
+  }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -123,7 +156,7 @@
   <div id="pause" class="it hidden">PAUSE</div>
 </div>
 
-<div id="menu">
+<div id="menu" class="allow">
   <h1 class="it">APEX RACING</h1>
   <div class="sub">3D CIRCUIT × DRIFT</div>
   <div id="best"></div>
@@ -155,7 +188,7 @@
   <div class="keys">↑ / W アクセル　↓ / S ブレーキ・バック　← → / A D ハンドル<br>Space ハンドブレーキ（ドリフト）　C カメラ　M BGM　（iPad：傾きハンドル対応）　R コースに戻る　P ポーズ<br>ゲームパッド対応（スティック／RT／LT／Aボタン）</div>
 </div>
 
-<div id="result" class="hidden">
+<div id="result" class="hidden allow">
   <div id="resBox" class="panel"><h2 class="it" id="resTitle">FINISH</h2><table id="resTable"></table></div>
   <div class="row"><button class="big-btn it" id="replayBtn" style="background:linear-gradient(#26a69a,#00796b);box-shadow:0 6px 0 #004d40">🎬 リプレイ</button><button class="big-btn it" id="again">もう一度</button><button class="big-btn it" id="toMenu" style="background:linear-gradient(#546e7a,#37474f);box-shadow:0 6px 0 #1c262b">メニュー</button></div>
 </div>
