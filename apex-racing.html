@@ -176,6 +176,11 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   .rk-keys .rk-del { grid-column: span 2; } .rk-keys .rk-ok { grid-column: span 4; background: #e53935; } .rk-keys button:disabled { opacity: .4; }
   .rk-note { font-size: 12px; color: #ffab91; margin-top: 4px; }
   html.mq-short .rk-keys button { padding: 4px 0; font-size: 14px; } html.mq-short .rk-name span { height: 38px; font-size: 26px; } html.mq-short .rk-table { font-size: 14px; }
+  /* レース画面・リプレイ・メニューを iPhone の 安全な範囲の 内がわに */
+  #hud { position: fixed; top: var(--st, 0px); left: var(--sl, 0px); right: var(--sr, 0px); bottom: var(--sb, 0px); transform: translateZ(0); }
+  #replayUI { top: var(--st, 0px); left: var(--sl, 0px); right: var(--sr, 0px); bottom: var(--sb, 0px); transform: translateZ(0); }
+  html:root #menu, html:root #result { padding-left: max(10px, calc(var(--sl, 0px) + 8px)); padding-right: max(10px, calc(var(--sr, 0px) + 8px)); }
+  html.mq-short #qStars { top: 136px; }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
@@ -188,8 +193,19 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   window.toLocal = (x, y) => R.deg === 90 ? { x: y, y: innerWidth - x } : R.deg === -90 ? { x: innerHeight - y, y: x } : { x, y };
   window.localRect = el => { const r = el.getBoundingClientRect(); if (!R.deg) return r; const a = toLocal(r.left, r.top), b = toLocal(r.right, r.bottom);
     const left = Math.min(a.x, b.x), top = Math.min(a.y, b.y); return { left, top, width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y), right: left + Math.abs(a.x - b.x), bottom: top + Math.abs(a.y - b.y) }; };
+  // iPhone の 時計・ダイナミックアイランド・ホームバー・角の丸み をさける はば（本体の向きで はかる）
+  let probe = null;
+  const envInset = () => {
+    if (!probe) { probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)'; document.documentElement.appendChild(probe); }
+    const cs = getComputedStyle(probe), v = k => parseFloat(cs[k]) || 0;
+    return { t: v('paddingTop'), r: v('paddingRight'), b: v('paddingBottom'), l: v('paddingLeft') };
+  };
   window.applyView = () => {
     const w = LW(), h = LH(), c = document.documentElement.classList, st = document.documentElement.style;
+    // 回しているときは 本体の上（時計）と下（ホームバー）が ゲームの 右・左 になる。ブラウザのときの ために 少し 多めに あける
+    const e = envInset(), top = Math.max(e.t, 14), bot = Math.max(e.b, 14);
+    const S = R.deg === 90 ? { l: top, r: bot, t: e.r, b: e.l } : R.deg === -90 ? { l: bot, r: top, t: e.l, b: e.r } : { l: e.l, r: e.r, t: e.t, b: e.b };
+    for (const k in S) st.setProperty('--s' + k, S[k] + 'px');
     c.toggle('mq-w760', w <= 760); c.toggle('mq-small', h <= 560 || w <= 600); c.toggle('mq-short', h <= 500);
     c.toggle('mq-wide', w / h >= 1.25); c.toggle('mq-tall', w / h <= 1.25); c.toggle('mq-w601', w >= 601 && w <= 760);
     c.toggle('rot', !!R.deg); c.toggle('rot90', R.deg === 90); c.toggle('rotm90', R.deg === -90);
@@ -1586,7 +1602,9 @@ $('pauseBtn').addEventListener('click', togglePause);
 function cycleCam() { camMode = (camMode + 1) % 3; }
 $('camBtn').addEventListener('click', cycleCam); $('bgmBtn').addEventListener('click', toggleBgm);
 function respawn() { if (!player || state !== 'racing') return; tiltZero = tiltRoll; const t = trackAt(player.cumF); player.x = t.x; player.z = t.z; player.h = Math.atan2(t.tx, t.tz); player.vx = player.vz = 0; player.loose = 0; player.steer = 0; camInit = false; }
-function hold(id, k) { const el = $(id), on = e => { e.preventDefault(); tch[k] = 1; el.classList.add('on'); audioInit(); }, off = e => { e.preventDefault(); tch[k] = 0; el.classList.remove('on'); }; el.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, off)); }
+// 押している あいだは 指が すこし ずれても はなれない（pointer capture）。はなした時だけ OFF
+function hold(id, k) { const el = $(id), on = e => { e.preventDefault(); tch[k] = 1; el.classList.add('on'); audioInit(); try { el.setPointerCapture(e.pointerId); } catch (x) {} }, off = e => { tch[k] = 0; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', on); ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, off)); el.addEventListener('contextmenu', e => e.preventDefault()); }
 hold('tL', 'l'); hold('tR', 'r'); hold('tGas', 'gas'); hold('tHB', 'hb'); hold('tBrk', 'brk');
 const KM = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'gas', w: 'gas', W: 'gas', ArrowDown: 'brk', s: 'brk', S: 'brk', ' ': 'hb' };
 addEventListener('keydown', e => { if (KM[e.key]) { keys[KM[e.key]] = 1; e.preventDefault(); } if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') togglePause(); if (e.key === 'c' || e.key === 'C') cycleCam(); if (e.key === 'm' || e.key === 'M') toggleBgm(); if (e.key === 'r' || e.key === 'R') respawn(); });
