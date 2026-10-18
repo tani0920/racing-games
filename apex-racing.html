@@ -2133,7 +2133,8 @@ if (TURBO) {
 
 /* =============== タイムランキング（コースごと・ベストラップ 上位10位） =============== */
 // 端末に保存しつつ、Firestore の ranks/{ボード} で みんなと共有する。名前は アルファベット3文字
-const RANK_N = 10, LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+// RANK_CLOUD を true にすると、Firestore（ranks）で みんなと共有する。いまは この端末だけ
+const RANK_N = 10, LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', RANK_CLOUD = false;
 const rankBoard = () => (TURBO ? 'turbo' : 'apex') + '_' + String(courseKey).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40);
 const rankUrl = b => `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents/ranks/${b}?key=${FB.apiKey}`;
 const rankLocal = b => { try { const a = JSON.parse(localStorage.getItem('apex.rank.' + b) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
@@ -2147,19 +2148,19 @@ function rankMerge(...lists) {
 let rankCloudOk = true;
 async function rankFetch(b) {
   let remote = [];
-  try { const r = await fetch(rankUrl(b), { cache: 'no-store' }); if (r.ok) { const f = (await r.json()).fields || {}; remote = JSON.parse((f.list && f.list.stringValue) || '[]'); rankCloudOk = true; } else if (r.status !== 404) rankCloudOk = false; } catch (e) { rankCloudOk = false; }
+  if (RANK_CLOUD) try { const r = await fetch(rankUrl(b), { cache: 'no-store' }); if (r.ok) { const f = (await r.json()).fields || {}; remote = JSON.parse((f.list && f.list.stringValue) || '[]'); rankCloudOk = true; } else if (r.status !== 404) rankCloudOk = false; } catch (e) { rankCloudOk = false; }
   const m = rankMerge(rankLocal(b), Array.isArray(remote) ? remote : []); rankLocalSet(b, m); return m;
 }
 async function rankPush(b, list) {
   rankLocalSet(b, list);
-  try { const r = await fetch(rankUrl(b), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { list: { stringValue: JSON.stringify(list) }, updated: { integerValue: String(Date.now()) } } }) }); rankCloudOk = r.ok; } catch (e) { rankCloudOk = false; }
+  if (RANK_CLOUD) try { const r = await fetch(rankUrl(b), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { list: { stringValue: JSON.stringify(list) }, updated: { integerValue: String(Date.now()) } } }) }); rankCloudOk = r.ok; } catch (e) { rankCloudOk = false; }
 }
 const carName = i => { const b = document.querySelector(`#cars [data-car="${i}"]`); return b ? b.firstChild.textContent.trim() : ''; };
 function rankTable(list, hiIdx) {
   if (!list.length) return '<tr><td colspan="4" style="text-align:center;color:#90a4ae">まだ 記録が ありません。1位を ねらおう！</td></tr>';
   return list.map((e, i) => `<tr class="${i === hiIdx ? 'rk-me' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '位'}</td><td class="rk-n">${e.n}</td><td class="rk-c">${carName(e.c)}</td><td>${fmt(e.t)}</td></tr>`).join('');
 }
-const cloudNote = () => rankCloudOk ? '' : '<div class="rk-note">（いまは この端末の記録だけ。ネットにつながると みんなの記録も 見られます）</div>';
+const cloudNote = () => !RANK_CLOUD || rankCloudOk ? '' : '<div class="rk-note">（いまは この端末の記録だけ。ネットにつながると みんなの記録も 見られます）</div>';
 // レースの あと：ランクインしたら 名前を入れる
 let rankRace = null;
 async function rankAfterRace() {
