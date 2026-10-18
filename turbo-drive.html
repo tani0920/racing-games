@@ -262,7 +262,8 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
     <button class="opt" data-car="6">オープンスポーツ<small>屋根なし・軽快</small></button>
   </div>
   <div class="row" id="colors"></div>
-  <div class="row turboOnly" id="learnRow"><button class="opt" data-learn="mul">かけざん<small>九九</small></button><button class="opt" data-learn="calc">たし算・ひき算<small>2けた・くり上がりも</small></button><button class="opt" data-learn="kanji">かん字の よみ<small>1・2年生</small></button><button class="opt" data-learn="clock">とけい<small>なんじ なんぷん？</small></button><button class="opt" data-learn="mix">ぜんぶ ミックス<small>いろいろ出る</small></button></div>
+  <div class="row turboOnly" id="gradeRow"><button class="opt" data-grade="1">1年生</button><button class="opt" data-grade="2">2年生</button><button class="opt" data-grade="3">3年生</button></div>
+  <div class="row turboOnly" id="learnRow"></div>
   <div class="row" id="modes">
     <button class="opt sel" data-mode="race">レース<small>AI 5台</small></button>
     <button class="opt" data-mode="ta">タイムアタック<small>ひとりで走る</small></button>
@@ -2035,10 +2036,85 @@ function qClock(tier) {
   for (const [hh, mm] of shuffle(cands)) { const l = lab(hh, mm); if (!set.includes(l) && set.length < 3) set.push(l); }
   return { vis: clockSVG(h, m), text: 'なんじ なんぷん？', say: 'なんじ なんぷんかな？', choices: set.map(l => ({ label: l, correct: l === ans })), ansSay: ans };
 }
-function makeQuestion(kind, tier) {
-  if (kind === 'mix') kind = pick(['mul', 'calc', 'kanji', 'clock']);
-  return kind === 'mul' ? qMul(tier) : kind === 'calc' ? qCalc(tier) : kind === 'kanji' ? qKanji() : qClock(tier);
+/* ---- 学年べつの もんだい（1年生・3年生。2年生は 上の qMul / qCalc / qKanji / qClock） ---- */
+const KANJI1 = [['山','やま'],['川','かわ'],['月','つき'],['日','ひ'],['火','ひ'],['水','みず'],['木','き'],['金','きん'],['土','つち'],['目','め'],['口','くち'],['耳','みみ'],['手','て'],['足','あし'],
+  ['花','はな'],['草','くさ'],['森','もり'],['林','はやし'],['雨','あめ'],['空','そら'],['犬','いぬ'],['虫','むし'],['貝','かい'],['石','いし'],['赤','あか'],['青','あお'],['白','しろ'],['上','うえ'],['下','した'],
+  ['右','みぎ'],['左','ひだり'],['中','なか'],['百','ひゃく'],['千','せん'],['円','えん'],['王','おう'],['玉','たま'],['学校','がっこう'],['先生','せんせい'],['男','おとこ'],['女','おんな'],['子','こ'],['人','ひと'],
+  ['車','くるま'],['町','まち'],['村','むら'],['天気','てんき'],['本','ほん'],['竹','たけ'],['糸','いと'],['夕方','ゆうがた'],['音','おと'],['田','た'],['大きい','おおきい'],['小さい','ちいさい'],['見る','みる'],['休む','やすむ'],['入る','はいる'],['出る','でる']];
+const KANJI3 = [['駅','えき'],['橋','はし'],['湖','みずうみ'],['島','しま'],['坂','さか'],['港','みなと'],['皿','さら'],['歯','は'],['鼻','はな'],['豆','まめ'],['箱','はこ'],['笛','ふえ'],['畑','はたけ'],
+  ['葉','は'],['羊','ひつじ'],['鉄','てつ'],['氷','こおり'],['薬','くすり'],['筆','ふで'],['宿題','しゅくだい'],['勉強','べんきょう'],['旅行','りょこう'],['野球','やきゅう'],['地球','ちきゅう'],['写真','しゃしん'],
+  ['世界','せかい'],['病院','びょういん'],['医者','いしゃ'],['銀行','ぎんこう'],['漢字','かんじ'],['練習','れんしゅう'],['運動','うんどう'],['温度','おんど'],['動物','どうぶつ'],['暑い','あつい'],['寒い','さむい'],
+  ['軽い','かるい'],['重い','おもい'],['速い','はやい'],['短い','みじかい'],['悲しい','かなしい'],['美しい','うつくしい'],['遊ぶ','あそぶ'],['泳ぐ','およぐ'],['起きる','おきる'],['始まる','はじまる'],['終わる','おわる'],['落ちる','おちる']];
+function qKanjiFrom(list, grade) {
+  const w = pick(list), three = [w], used = new Set([w[1]]);
+  for (const x of shuffle(list)) { if (three.length >= 3) break; if (!used.has(x[1])) { used.add(x[1]); three.push(x); } }
+  return { vis: `<span class="kanji">${w[0]}</span>`, text: `この かん字の よみかたは？（${grade}年生）`, say: 'この かんじの よみかたは？', choices: three.map(x => ({ label: x[1], correct: x === w })), ansSay: w[1] };
 }
+// 1年生
+function q1Calc(tier) {
+  const sub = Math.random() < .5; let a, b, ans;
+  if (!sub) { if (tier === 0) { a = irnd(1, 8); b = irnd(1, 10 - a); } else { a = irnd(2, 9); b = irnd(11 - a, 9); } ans = a + b; }
+  else { if (tier === 0) { a = irnd(3, 10); b = irnd(1, a - 1); } else { a = irnd(11, 18); b = irnd(a - 9, 9); } ans = a - b; }
+  const op = sub ? '−' : '+';
+  return { vis: `<span class="eq">${a} ${op} ${b} ＝ ？</span>`, text: sub ? 'ひき算' : 'たし算', say: `${a} ${sub ? 'ひく' : 'たす'} ${b} は？`,
+    choices: numChoices(ans, [ans + 1, ans - 1, ans + 2, ans - 2, ans + 10, a, b]), ansSay: String(ans) };
+}
+function q1Num(tier) {
+  const t = Math.random();
+  if (t < .34) { const ten = irnd(1, 9), one = irnd(0, 9), ans = ten * 10 + one;
+    return { vis: `<span class="eq">10が ${ten}こ と 1が ${one}こ</span>`, text: 'あわせて いくつ？', say: `じゅうが ${ten}こと、いちが ${one}こで、いくつ？`, choices: numChoices(ans, [one * 10 + ten, ans + 10, ans - 10, ans + 1, ans - 1]), ansSay: String(ans) }; }
+  if (t < .67) { const n = irnd(tier ? 19 : 5, tier ? 99 : 30), next = Math.random() < .6, ans = next ? n + 1 : n - 1;
+    return { vis: `<span class="eq">${n} の ${next ? 'つぎ' : 'まえ'}</span>`, text: `${n} の ${next ? 'つぎの' : 'ひとつ まえの'} かずは？`, say: `${n} の ${next ? 'つぎの' : 'ひとつまえの'} かずは？`, choices: numChoices(ans, [n, next ? n - 1 : n + 1, ans + 10, ans - 10]), ansSay: String(ans) }; }
+  const set = new Set(); while (set.size < 3) set.add(irnd(tier ? 10 : 1, tier ? 99 : 20)); const arr = [...set], mx = Math.max(...arr);
+  return { vis: `<span class="eq">${arr.join('　')}</span>`, text: 'いちばん 大きい かずは？', say: 'いちばん おおきい かずは どれ？', choices: arr.map(n => ({ label: String(n), correct: n === mx })), ansSay: String(mx) };
+}
+// 3年生
+function q3Div(tier) {
+  const b = irnd(2, 9), q = irnd(tier ? 2 : 1, 9);
+  if (tier === 0 || Math.random() < .4) { const a = b * q;
+    return { vis: `<span class="eq">${a} ÷ ${b} ＝ ？</span>`, text: 'わり算', say: `${a} わる ${b} は？`, choices: numChoices(q, [q + 1, q - 1, b, q + 2]), ansSay: String(q) }; }
+  const r = irnd(1, b - 1), a = b * q + r, lab = (x, y) => `${x}あまり${y}`, ans = lab(q, r), set = [ans];
+  for (const [x, y] of shuffle([[q + 1, r], [q - 1, r + b], [q, (r % (b - 1)) + 1], [q + 1, Math.max(0, r - 1)], [q - 1, r]])) { const l = lab(x, y); if (x > 0 && !set.includes(l) && set.length < 3) set.push(l); }
+  return { vis: `<span class="eq">${a} ÷ ${b} ＝ ？</span>`, text: 'わり算（あまりも 出してね）', say: `${a} わる ${b} は？ あまりも こたえてね`, choices: set.map(l => ({ label: l, correct: l === ans })), ansSay: `${q} あまり ${r}` };
+}
+function q3Calc(tier) {
+  const k = tier === 0 ? pick(['add', 'sub']) : pick(['add', 'sub', 'mul']); let a, b, ans, op;
+  if (k === 'add') { a = irnd(105, 699); b = irnd(105, 299); ans = a + b; op = '+'; }
+  else if (k === 'sub') { a = irnd(300, 999); b = irnd(101, a - 50); ans = a - b; op = '−'; }
+  else { a = irnd(12, 49); b = irnd(2, 9); ans = a * b; op = '×'; }
+  return { vis: `<span class="eq">${a} ${op} ${b} ＝ ？</span>${hissan(a, b, op, ans)}`, text: k === 'add' ? '3けたの たし算' : k === 'sub' ? '3けたの ひき算' : 'かけ算',
+    say: `${a} ${k === 'add' ? 'たす' : k === 'sub' ? 'ひく' : 'かける'} ${b} は？`, choices: numChoices(ans, [ans + 10, ans - 10, ans + 100, ans - 100, ans + 1, ans - 1]), ansSay: String(ans) };
+}
+const durLabel = d => d >= 60 ? `1じかん${d > 60 ? durLabel(d - 60) : ''}` : `${d}${d % 10 === 5 ? 'ふん' : 'ぷん'}`;
+function q3Time(tier) {
+  const h = irnd(1, 10), m = pick([0, 10, 15, 20, 30, 40, 45, 50]), d = pick(tier ? [25, 35, 40, 45, 50, 70] : [10, 20, 30, 40]);
+  const lab = (mm) => { const t = h * 60 + mm; return timeLabel(((Math.floor(t / 60) + 11) % 12) + 1, ((t % 60) + 60) % 60, false); };
+  if (Math.random() < .5) { const ans = lab(m + d), set = [ans];
+    for (const dd of shuffle([d + 10, d - 10, d + 60, d + 5, d - 5])) { const l = lab(m + dd); if (!set.includes(l) && set.length < 3) set.push(l); }
+    return { vis: clockSVG(h, m), text: `いまは ${lab(m)}。${durLabel(d)} あとは？`, say: `いまは ${lab(m)}。${durLabel(d)} あとは なんじ なんぷん？`, choices: set.map(l => ({ label: l, correct: l === ans })), ansSay: ans }; }
+  const ans = durLabel(d), set = [ans];
+  for (const dd of shuffle([d + 10, d - 10, d + 5, d - 5, d + 20])) { if (dd <= 0) continue; const l = durLabel(dd); if (!set.includes(l) && set.length < 3) set.push(l); }
+  return { vis: clockSVG(h, m), text: `${lab(m)} から ${lab(m + d)} まで なんぷん？`, say: `${lab(m)} から ${lab(m + d)} まで、なんぷんかん？`, choices: set.map(l => ({ label: l, correct: l === ans })), ansSay: ans };
+}
+// 学年ごとの もんだいの しゅるい（ボタン）
+const GRADES = {
+  1: { calc: ['たし算・ひき算', '20までの かず', q1Calc], num: ['かずの しくみ', '10の まとまり', q1Num], kanji: ['かん字の よみ', '1年生', () => qKanjiFrom(KANJI1, 1)], clock: ['とけい', 'なんじ・なんじはん', () => qClock(0)] },
+  2: { mul: ['かけざん', '九九', qMul], calc: ['たし算・ひき算', '2けた・くり上がりも', qCalc], kanji: ['かん字の よみ', '1・2年生', () => qKanjiFrom(KANJI, 2)], clock: ['とけい', 'なんじ なんぷん？', qClock] },
+  3: { div: ['わり算', 'あまりも', q3Div], calc: ['3けたの 計算', 'たし算・ひき算・かけ算', q3Calc], kanji: ['かん字の よみ', '3年生', () => qKanjiFrom(KANJI3, 3)], time: ['時こくと 時間', 'なんぷん あと？', q3Time] }
+};
+let grade = 2; try { grade = +localStorage.getItem('turbo.grade') || 2; } catch (e) {} if (!GRADES[grade]) grade = 2;
+function makeQuestion(kind, tier) {
+  const G = GRADES[grade]; if (!G[kind]) kind = pick(Object.keys(G));
+  return G[kind][2](tier);
+}
+function renderLearnRow() {
+  const G = GRADES[grade]; if (learnKind !== 'mix' && !G[learnKind]) learnKind = 'mix';
+  $('learnRow').innerHTML = Object.entries(G).map(([k, v]) => `<button class="opt" data-learn="${k}">${v[0]}<small>${v[1]}</small></button>`).join('') + '<button class="opt" data-learn="mix">ぜんぶ ミックス<small>いろいろ出る</small></button>';
+  $('learnRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.learn === learnKind));
+  bindGroup('learnRow', 'learn', v => { learnKind = v; try { localStorage.setItem('turbo.learn', v); } catch (e) {} });
+  $('gradeRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', +b.dataset.grade === grade));
+}
+
 // 読み上げ
 let jaVoice = null;
 function loadVoice() { if (window.speechSynthesis) jaVoice = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)) || null; }
@@ -2142,10 +2218,10 @@ function turboUpdate(dt) {
 function turboResultRows() { return `<tr><td>もんだい せいかい</td><td>${tOk} / ${tTotal}</td></tr><tr><td>⭐ ぜんぶで</td><td>${tStars}</td></tr>`; }
 if (TURBO) {
   document.body.classList.add('turbo'); document.title = 'TURBO DRIVE';
-  $('menu').querySelector('h1').textContent = 'TURBO DRIVE'; $('menu').querySelector('.sub').textContent = '走りながら ゲートで こたえよう。せいかいで ニトロ発動！';
+  $('menu').querySelector('h1').textContent = 'TURBO DRIVE'; $('menu').querySelector('.sub').textContent = 'ゲートで こたえて ニトロ発動！ 小学1〜3年生';
   if (!BUILTIN[courseSel] || !BUILTIN[courseSel].turbo) { courseSel = 'pass'; syncCourseUI(); }
-  $('learnRow').querySelectorAll('.opt').forEach(b => b.classList.toggle('sel', b.dataset.learn === learnKind));
-  bindGroup('learnRow', 'learn', v => { learnKind = v; try { localStorage.setItem('turbo.learn', v); } catch (e) {} });
+  renderLearnRow();
+  bindGroup('gradeRow', 'grade', v => { grade = +v; try { localStorage.setItem('turbo.grade', v); } catch (e) {} renderLearnRow(); });
   $('qSay').addEventListener('click', () => tq && say(tq.say));
 }
 
@@ -2220,7 +2296,7 @@ async function rankOpen() {
 }
 $('rankBtn').addEventListener('click', rankOpen); $('rkClose').addEventListener('click', () => $('rankDlg').classList.add('hidden'));
 
-window.__apex = { get rankRace() { return rankRace; }, rankBoard, rankTest: t => { rankRace = { t, board: rankBoard() }; $('menu').classList.add('hidden'); $('result').classList.remove('hidden'); $('resTable').innerHTML = ''; rankAfterRace(); },  turboDbg: () => ({ tPhase, tT, gate: tGate && tGate.cum, ans: tGate && GATE_LAT[tGate.order.findIndex(c => c.correct)], cum: player && player.cumF, ok: tOk, total: tTotal }), BUILTIN, buildTR, edSpline, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
+window.__apex = { qTest: (g, k, t) => { const o = grade; grade = g; try { return makeQuestion(k, t); } finally { grade = o; } }, get rankRace() { return rankRace; }, rankBoard, rankTest: t => { rankRace = { t, board: rankBoard() }; $('menu').classList.add('hidden'); $('result').classList.remove('hidden'); $('resTable').innerHTML = ''; rankAfterRace(); },  turboDbg: () => ({ tPhase, tT, gate: tGate && tGate.cum, ans: tGate && GATE_LAT[tGate.order.findIndex(c => c.correct)], cum: player && player.cumF, ok: tOk, total: tTotal }), BUILTIN, buildTR, edSpline, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
