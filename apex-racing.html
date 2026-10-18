@@ -44,7 +44,7 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   #driftBar { height: 12px; background: rgba(255,255,255,.14); border-radius: 6px; overflow: hidden; margin: 4px 0; }
   #driftFill { height: 100%; width: 0; background: #29b6f6; }
   #driftScore { font-size: 22px; color: #ff80ab; }
-  #msg { position: fixed; top: 28%; left: 0; right: 0; text-align: center; font-size: clamp(40px, 9vw, 96px); pointer-events: none;
+  #msg { position: fixed; top: 28%; left: 0; right: 0; text-align: center; font-size: clamp(40px, calc(var(--vw, 1vw) * 9), 96px); pointer-events: none;
     text-shadow: 0 0 24px currentColor, 0 4px 0 rgba(0,0,0,.4); opacity: 0; }
   #msg.show { animation: pop 1.5s ease-out; } #msg.sticky { opacity: 1; animation: none; }
   @keyframes pop { 0% { opacity: 0; transform: scale(.5); } 15% { opacity: 1; transform: scale(1.12); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
@@ -52,20 +52,21 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   #flash { position: fixed; inset: 0; pointer-events: none; background: #fff; opacity: 0; }
   #sys { position: fixed; top: 14px; right: 200px; display: flex; gap: 8px; }
   .rb { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.4); background: rgba(10,12,22,.6); color: #fff; font-size: 17px; cursor: pointer; }
-  @media (max-width: 760px) { #sys { top: 196px; right: 14px; } #mini { width: 130px; height: 130px; } #pos .big { font-size: 40px; } }
+  html.mq-w760 #sys { top: 196px; right: 14px; } html.mq-w760 #mini { width: 130px; height: 130px; } html.mq-w760 #pos .big { font-size: 40px; }
+
   #pause { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; background: rgba(0,0,0,.5); pointer-events: none; }
   #touch { position: fixed; bottom: 150px; left: 14px; right: 14px; display: flex; justify-content: space-between; pointer-events: none; }
   #touch .g { display: flex; gap: 10px; align-items: flex-end; }
   #touch button { pointer-events: auto; width: 82px; height: 82px; border-radius: 22px; font-size: 16px; font-weight: bold; font-family: inherit;
     border: 2px solid rgba(255,255,255,.6); background: rgba(10,12,22,.5); color: #fff; }
-  #touch button#tHB, #touch button#tGas { width: clamp(110px, 21vw, 190px); height: clamp(110px, 21vw, 190px); font-size: clamp(20px, 3.4vw, 30px); border-radius: 30px; }
+  #touch button#tHB, #touch button#tGas { width: clamp(110px, calc(var(--vw, 1vw) * 21), 190px); height: clamp(110px, calc(var(--vw, 1vw) * 21), 190px); font-size: clamp(20px, calc(var(--vw, 1vw) * 3.4), 30px); border-radius: 30px; }
   #touch .col { display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-  #touch button#tBrk { width: clamp(110px, 21vw, 190px); height: clamp(64px, 11vw, 100px); font-size: clamp(18px, 3vw, 26px); border-radius: 24px; border-color: #ff5252; }
+  #touch button#tBrk { width: clamp(110px, calc(var(--vw, 1vw) * 21), 190px); height: clamp(64px, calc(var(--vw, 1vw) * 11), 100px); font-size: clamp(18px, calc(var(--vw, 1vw) * 3), 26px); border-radius: 24px; border-color: #ff5252; }
   #touch button.on { background: rgba(0,170,255,.6); }
 
   #menu, #result { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; overflow: auto;
     background: radial-gradient(ellipse at 30% 20%, rgba(255,120,40,.18), rgba(5,8,18,.82) 60%); }
-  #menu h1 { margin: 0; font-size: clamp(44px, 10vw, 92px); letter-spacing: .06em; background: linear-gradient(90deg, #ffca28, #ff5252); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #menu h1 { margin: 0; font-size: clamp(44px, calc(var(--vw, 1vw) * 10), 92px); letter-spacing: .06em; background: linear-gradient(90deg, #ffca28, #ff5252); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #menu .sub { color: #b0bec5; letter-spacing: .3em; font-size: 13px; margin-top: -10px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   .opt { min-width: 150px; padding: 12px 16px; border-radius: 10px; border: 2px solid rgba(255,255,255,.2); background: rgba(20,24,40,.8); color: #fff; font-size: 16px; font-family: inherit; cursor: pointer; text-align: center; }
@@ -77,7 +78,7 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   #go:active, .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8e1b14; }
   #menu .keys { color: #78909c; font-size: 13px; line-height: 1.7; text-align: center; }
   #best { color: #ffca28; font-size: 15px; }
-  #resBox { padding: 18px 28px; min-width: min(420px, 92vw); } #resBox h2 { margin: 0 0 10px; font-size: 40px; color: #ffca28; }
+  #resBox { padding: 18px 28px; min-width: min(420px, calc(var(--vw, 1vw) * 92)); } #resBox h2 { margin: 0 0 10px; font-size: 40px; color: #ffca28; }
   #resBox table { width: 100%; font-variant-numeric: tabular-nums; font-size: 18px; border-collapse: collapse; } #resBox td { padding: 3px 4px; } #resBox td:last-child { text-align: right; }
   #editor { position: fixed; inset: 0; z-index: 50; background: #243424; }
   #edCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -92,13 +93,13 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   .edb.go { background: linear-gradient(#ff7043, #e53935); border: none; font-weight: 800; }
   #edHelp { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 12px; color: rgba(255,255,255,.6); pointer-events: none; }
   #edToast { position: absolute; top: 108px; left: 50%; transform: translateX(-50%); padding: 8px 16px; font-size: 15px; pointer-events: none; }
-  #edList, #edShareBox { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 16px; width: min(440px, 92vw); max-height: 80vh; overflow: auto; background: rgba(12,16,30,.96); }
+  #edList, #edShareBox { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 16px; width: min(440px, calc(var(--vw, 1vw) * 92)); max-height: calc(var(--vh, 1vh) * 80); overflow: auto; background: rgba(12,16,30,.96); }
   .lrow { display: flex; gap: 8px; align-items: center; margin: 6px 0; } .lrow span { flex: 1; font-size: 16px; }
   #courseRow .opt small, #steerRow .opt small { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #fxCanvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
   #replayUI { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
   #rpTop { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 8px 20px; font-size: 20px; }
-  #rpBar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 10px 14px; width: min(560px, 94vw); pointer-events: auto; }
+  #rpBar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 10px 14px; width: min(560px, calc(var(--vw, 1vw) * 94)); pointer-events: auto; }
   #rpProg { height: 6px; background: rgba(255,255,255,.2); border-radius: 3px; margin-bottom: 10px; overflow: hidden; } #rpFill { height: 100%; width: 0; background: #ff5252; }
   .edb.on { background: rgba(0,170,255,.6); }
   #syncKey { flex: 1; min-width: 160px; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 8px 10px; font-size: 15px; font-family: inherit; -webkit-user-select: text; user-select: text; }
@@ -111,56 +112,101 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   #menu > :first-child, #result > :first-child { margin-top: auto; } #menu > :last-child, #result > :last-child { margin-bottom: auto; }
   #menu, #menu *, #result, #result * { touch-action: pan-y !important; }
   /* 小さい画面（スマホ） */
-  @media (max-height: 560px), (max-width: 600px) {
-    #menu { gap: 8px; padding: 10px 10px 12px; }
-    #menu h1 { font-size: clamp(30px, 7vw, 46px); } #menu .sub { margin-top: -4px; font-size: 11px; }
-    .opt { min-width: 0; padding: 7px 10px; font-size: 14px; border-radius: 8px; } .opt small { font-size: 10px; margin-top: 1px; }
-    .row { gap: 6px; } .sw { width: 28px; height: 28px; }
-    #go { position: sticky; bottom: 8px; z-index: 2; padding: 12px 48px; font-size: 22px; }
-    #menu .keys { display: none; }
-    #resBox { padding: 10px 14px; } #resBox h2 { font-size: 28px; margin-bottom: 4px; } #resBox table { font-size: 15px; }
-    .big-btn { padding: 10px 26px; font-size: 18px; }
-  }
+  html.mq-small #menu { gap: 8px; padding: 10px 10px 12px; }
+    html.mq-small #menu h1 { font-size: clamp(30px, calc(var(--vw, 1vw) * 7), 46px); } html.mq-small #menu .sub { margin-top: -4px; font-size: 11px; }
+    html.mq-small .opt { min-width: 0; padding: 7px 10px; font-size: 14px; border-radius: 8px; } html.mq-small .opt small { font-size: 10px; margin-top: 1px; }
+    html.mq-small .row { gap: 6px; } html.mq-small .sw { width: 28px; height: 28px; }
+    html.mq-small #go { position: sticky; bottom: 8px; z-index: 2; padding: 12px 48px; font-size: 22px; }
+    html.mq-small #menu .keys { display: none; }
+    html.mq-small #resBox { padding: 10px 14px; } html.mq-small #resBox h2 { font-size: 28px; margin-bottom: 4px; } html.mq-small #resBox table { font-size: 15px; }
+    html.mq-small .big-btn { padding: 10px 26px; font-size: 18px; }
+
   /* スマホ横向き：レース中の表示を 小さく・重ならない位置に */
-  @media (max-height: 500px) {
-    #pos { top: 8px; left: 8px; padding: 4px 10px; } #pos .big { font-size: 30px; } #pos .big small { font-size: 16px; } #pos .lap { font-size: 13px; }
-    #times { top: 8px; padding: 3px 12px; left: 36%; } #sys { gap: 5px; } #times .cur { font-size: 20px; } #times .sub { font-size: 11px; }
-    #miniWrap { top: 8px; right: 8px; padding: 3px; } #mini { width: 96px; height: 96px; }
-    #sys { top: 8px; right: 120px; } .rb { width: 34px; height: 34px; font-size: 14px; }
-    #speedo { right: auto; left: 50%; transform: translateX(-50%); bottom: 6px; min-width: 130px; padding: 2px 12px 5px; }
-    #kmh { font-size: 32px; } #gear { font-size: 18px; margin-top: 8px; } #speedo .u { font-size: 11px; }
-    #drift { left: 8px; bottom: auto; top: 76px; width: 130px; padding: 4px 8px; } #drift .t { font-size: 10px; } #driftScore { font-size: 14px; } #driftBar { height: 8px; }
-    #bgmName { bottom: auto; top: 128px; left: 10px; font-size: 13px; }
-    #touch { bottom: 8px; left: 8px; right: 8px; }
-    #touch button { width: min(17vw, 22vh); height: min(17vw, 22vh); font-size: 14px; }
-    #touch button#tHB, #touch button#tGas { width: min(21vw, 30vh); height: min(21vw, 30vh); font-size: 18px; }
-    #touch button#tBrk { width: min(21vw, 30vh); height: min(11vw, 15vh); font-size: 15px; }
-    #msg { top: 30%; font-size: clamp(32px, 9vh, 60px); }
-    #rpTop { top: 8px; font-size: 15px; padding: 4px 12px; } #rpBar { bottom: 8px; padding: 6px 10px; }
-  }
+  html.mq-short #pos { top: 8px; left: 8px; padding: 4px 10px; } html.mq-short #pos .big { font-size: 30px; } html.mq-short #pos .big small { font-size: 16px; } html.mq-short #pos .lap { font-size: 13px; }
+    html.mq-short #times { top: 8px; padding: 3px 12px; left: 36%; } html.mq-short #sys { gap: 5px; } html.mq-short #times .cur { font-size: 20px; } html.mq-short #times .sub { font-size: 11px; }
+    html.mq-short #miniWrap { top: 8px; right: 8px; padding: 3px; } html.mq-short #mini { width: 96px; height: 96px; }
+    html.mq-short #sys { top: 8px; right: 120px; } html.mq-short .rb { width: 34px; height: 34px; font-size: 14px; }
+    html.mq-short #speedo { right: auto; left: 50%; transform: translateX(-50%); bottom: 6px; min-width: 130px; padding: 2px 12px 5px; }
+    html.mq-short #kmh { font-size: 32px; } html.mq-short #gear { font-size: 18px; margin-top: 8px; } html.mq-short #speedo .u { font-size: 11px; }
+    html.mq-short #drift { left: 8px; bottom: auto; top: 76px; width: 130px; padding: 4px 8px; } html.mq-short #drift .t { font-size: 10px; } html.mq-short #driftScore { font-size: 14px; } html.mq-short #driftBar { height: 8px; }
+    html.mq-short #bgmName { bottom: auto; top: 128px; left: 10px; font-size: 13px; }
+    html.mq-short #touch { bottom: 8px; left: 8px; right: 8px; }
+    html.mq-short #touch button { width: min(calc(var(--vw, 1vw) * 17), calc(var(--vh, 1vh) * 22)); height: min(calc(var(--vw, 1vw) * 17), calc(var(--vh, 1vh) * 22)); font-size: 14px; }
+    html.mq-short #touch button#tHB, html.mq-short #touch button#tGas { width: min(calc(var(--vw, 1vw) * 21), calc(var(--vh, 1vh) * 30)); height: min(calc(var(--vw, 1vw) * 21), calc(var(--vh, 1vh) * 30)); font-size: 18px; }
+    html.mq-short #touch button#tBrk { width: min(calc(var(--vw, 1vw) * 21), calc(var(--vh, 1vh) * 30)); height: min(calc(var(--vw, 1vw) * 11), calc(var(--vh, 1vh) * 15)); font-size: 15px; }
+    html.mq-short #msg { top: 30%; font-size: clamp(32px, calc(var(--vh, 1vh) * 9), 60px); }
+    html.mq-short #rpTop { top: 8px; font-size: 15px; padding: 4px 12px; } html.mq-short #rpBar { bottom: 8px; padding: 6px 10px; }
+
   #tiltDlg { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.6); }
   #tiltDlg.hidden { display: none !important; }
   /* メニュー：えらんだ車が見えるように、ボタンは 横長の画面なら右・縦長の画面なら下 によせる */
-  @media (min-aspect-ratio: 5/4) { #menu { left: auto; width: min(620px, 58vw); background: linear-gradient(90deg, rgba(5,8,18,0), rgba(5,8,18,.8) 14%, rgba(5,8,18,.88)); } #menu h1 { font-size: clamp(30px, 5.6vw, 72px); white-space: nowrap; } }
-  @media (max-aspect-ratio: 5/4) { #menu { top: 34vh; background: linear-gradient(rgba(5,8,18,0), rgba(5,8,18,.82) 7%, rgba(5,8,18,.9)); } }
+  html.mq-wide #menu { left: auto; width: min(620px, calc(var(--vw, 1vw) * 58)); background: linear-gradient(90deg, rgba(5,8,18,0), rgba(5,8,18,.8) 14%, rgba(5,8,18,.88)); } html.mq-wide #menu h1 { font-size: clamp(30px, calc(var(--vw, 1vw) * 5.6), 72px); white-space: nowrap; }
+
+  html.mq-tall #menu { top: calc(var(--vh, 1vh) * 34); background: linear-gradient(rgba(5,8,18,0), rgba(5,8,18,.82) 7%, rgba(5,8,18,.9)); }
+
   /* TURBO DRIVE（がくしゅう） */
   body:not(.turbo) .turboOnly, body.turbo .apexOnly { display: none !important; }
-  #quiz { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); padding: 6px 16px 8px; text-align: center; max-width: min(640px, 66vw); }
-  #qvis { font-size: clamp(24px, 4.2vw, 40px); font-weight: 900; line-height: 1.15; }
-  #qvis .kanji { font-size: clamp(52px, 9vw, 88px); line-height: 1; text-shadow: 0 0 16px #7df9ff; }
-  #qvis .eq { color: #fff59d; } #qvis svg { width: clamp(80px, 13vw, 120px); height: auto; vertical-align: middle; }
+  #quiz { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); padding: 6px 16px 8px; text-align: center; max-width: min(640px, calc(var(--vw, 1vw) * 66)); }
+  #qvis { font-size: clamp(24px, calc(var(--vw, 1vw) * 4.2), 40px); font-weight: 900; line-height: 1.15; }
+  #qvis .kanji { font-size: clamp(52px, calc(var(--vw, 1vw) * 9), 88px); line-height: 1; text-shadow: 0 0 16px #7df9ff; }
+  #qvis .eq { color: #fff59d; } #qvis svg { width: clamp(80px, calc(var(--vw, 1vw) * 13), 120px); height: auto; vertical-align: middle; }
   .hissan { font-family: "Menlo","Courier New",monospace; font-size: 22px; white-space: pre; text-align: left; display: inline-block; margin-left: 16px; vertical-align: middle; color: #b2ebf2; line-height: 1.1; }
-  #qtext { font-size: clamp(14px, 2.4vw, 20px); color: #b3e5fc; }
+  #qtext { font-size: clamp(14px, calc(var(--vw, 1vw) * 2.4), 20px); color: #b3e5fc; }
   #qchips { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
-  .qchip { white-space: nowrap; padding: 2px 14px; border-radius: 8px; font-weight: 900; font-size: clamp(16px, 2.6vw, 26px); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .qchip { white-space: nowrap; padding: 2px 14px; border-radius: 8px; font-weight: 900; font-size: clamp(16px, calc(var(--vw, 1vw) * 2.6), 26px); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
   .qchip.hint { outline: 3px solid #ffd740; animation: qhint .45s infinite alternate; } @keyframes qhint { to { transform: scale(1.12); } }
   #qSay { position: absolute; right: -10px; top: -10px; width: 38px; height: 38px; font-size: 18px; }
-  @media (min-width: 601px) and (max-width: 760px) { #quiz { top: 248px; } }
+  html.mq-w601 #quiz { top: 248px; }
+
   #qStars { position: fixed; top: 116px; left: 14px; padding: 4px 12px; font-size: 15px; font-weight: bold; color: #ffe082; }
-  @media (max-height: 560px), (max-width: 600px) { #quiz { top: 58px; padding: 3px 10px 5px; } #qvis { font-size: 22px; } #qvis .kanji { font-size: 44px; } #qvis svg { width: 64px; } .hissan { display: none; } .qchip { font-size: 16px; padding: 1px 10px; } #qSay { width: 30px; height: 30px; font-size: 14px; right: -38px; top: 2px; } #qStars { top: 74px; font-size: 12px; } }
+  html.mq-small #quiz { top: 58px; padding: 3px 10px 5px; } html.mq-small #qvis { font-size: 22px; } html.mq-small #qvis .kanji { font-size: 44px; } html.mq-small #qvis svg { width: 64px; } html.mq-small .hissan { display: none; } html.mq-small .qchip { font-size: 16px; padding: 1px 10px; } html.mq-small #qSay { width: 30px; height: 30px; font-size: 14px; right: -38px; top: 2px; } html.mq-small #qStars { top: 74px; font-size: 12px; }
+
+  /* タイムランキング */
+  #rankDlg { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.6); padding: 12px; }
+  .rk-body { padding: 14px 18px; width: min(460px, 94%); max-height: 92%; overflow: auto; text-align: center; }
+  #rkTitle { font-size: 19px; color: #ffca28; margin-bottom: 8px; }
+  .rk-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 17px; margin-bottom: 8px; } .rk-table td { padding: 3px 6px; text-align: left; } .rk-table td:last-child { text-align: right; }
+  .rk-n { font-weight: 900; letter-spacing: .12em; color: #fff59d; } .rk-c { color: #90a4ae; font-size: 12px; } .rk-me td { background: rgba(255,202,40,.28); }
+  #rankBox { margin-top: 10px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 8px; text-align: center; }
+  .rk-msg { font-size: 16px; margin-bottom: 6px; line-height: 1.5; } .rk-msg b { color: #ffca28; font-size: 20px; }
+  .rk-name { display: flex; gap: 10px; justify-content: center; margin: 4px 0 8px; } .rk-name span { width: 46px; height: 54px; font-size: 38px; font-weight: 900; border-bottom: 4px solid #607d8b; display: flex; align-items: center; justify-content: center; }
+  .rk-name span.cur { border-color: #ffca28; animation: qhint .5s infinite alternate; }
+  .rk-keys { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 460px; margin: 0 auto; }
+  .rk-keys button { padding: 8px 0; font-size: 17px; font-weight: 800; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.1); color: #fff; font-family: inherit; }
+  .rk-keys .rk-del { grid-column: span 2; } .rk-keys .rk-ok { grid-column: span 4; background: #e53935; } .rk-keys button:disabled { opacity: .4; }
+  .rk-note { font-size: 12px; color: #ffab91; margin-top: 4px; }
+  html.mq-short .rk-keys button { padding: 4px 0; font-size: 14px; } html.mq-short .rk-name span { height: 38px; font-size: 26px; } html.mq-short .rk-table { font-size: 14px; }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html,body{overscroll-behavior:none;-webkit-touch-callout:none;position:fixed;width:100%;touch-action:none}button,canvas,div{touch-action:none;-webkit-touch-callout:none}</style>
+<script>/* 画面の向き：iPhoneの「縦向きロック」中でも 横持ちで遊べるように、必要なら 画面ぜんたいを 90°回す。
+   LW()/LH() = ゲームから見た 横・たての大きさ。画面サイズで変わる見た目は html の mq-〇〇 クラスで切りかえる */
+(function () {
+  const R = window.VIEW = { deg: 0 };
+  window.LW = () => R.deg ? innerHeight : innerWidth; window.LH = () => R.deg ? innerWidth : innerHeight;
+  // 画面の点（clientX/Y）→ 回したあとの ゲームの座標
+  window.toLocal = (x, y) => R.deg === 90 ? { x: y, y: innerWidth - x } : R.deg === -90 ? { x: innerHeight - y, y: x } : { x, y };
+  window.localRect = el => { const r = el.getBoundingClientRect(); if (!R.deg) return r; const a = toLocal(r.left, r.top), b = toLocal(r.right, r.bottom);
+    const left = Math.min(a.x, b.x), top = Math.min(a.y, b.y); return { left, top, width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y), right: left + Math.abs(a.x - b.x), bottom: top + Math.abs(a.y - b.y) }; };
+  window.applyView = () => {
+    const w = LW(), h = LH(), c = document.documentElement.classList, st = document.documentElement.style;
+    c.toggle('mq-w760', w <= 760); c.toggle('mq-small', h <= 560 || w <= 600); c.toggle('mq-short', h <= 500);
+    c.toggle('mq-wide', w / h >= 1.25); c.toggle('mq-tall', w / h <= 1.25); c.toggle('mq-w601', w >= 601 && w <= 760);
+    c.toggle('rot', !!R.deg); c.toggle('rot90', R.deg === 90); c.toggle('rotm90', R.deg === -90);
+    st.setProperty('--vw', w / 100 + 'px'); st.setProperty('--vh', h / 100 + 'px'); st.setProperty('--lw', w + 'px'); st.setProperty('--lh', h + 'px');
+    st.setProperty('--pw', innerWidth + 'px'); st.setProperty('--ph', innerHeight + 'px');
+  };
+  window.setRot = d => { if (R.deg === d) return; R.deg = d; applyView(); dispatchEvent(new Event('resize')); };
+  addEventListener('resize', () => { if (R.deg && innerWidth > innerHeight) { R.deg = 0; } applyView(); });
+  applyView();
+})();
+</script>
+<style>
+  html.rot body { width: var(--lw) !important; height: var(--lh) !important; transform-origin: 0 0; }
+  html.rot90 body { transform: translateX(var(--pw)) rotate(90deg); }
+  html.rotm90 body { transform: translateY(var(--ph)) rotate(-90deg); }
+  html.rot #menu, html.rot #menu *, html.rot #result, html.rot #result * { touch-action: none !important; }
+</style>
 </head>
 <body>
 <div id="game"></div>
@@ -187,6 +233,7 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   <h1 class="it">APEX RACING</h1>
   <div class="sub">3D CIRCUIT × DRIFT</div>
   <div id="best"></div>
+  <div class="row" id="rotRow"><button class="opt" id="rankBtn">🏆 ランキング<small>このコースの TOP10</small></button><button class="opt hidden" id="rotBtn"></button></div>
   <div id="installHint" class="hidden" style="font-size:14px;color:#cfd8dc;text-align:center;max-width:560px;line-height:1.6"></div>
   <div id="menuNote" class="hidden" style="font-size:16px;font-weight:bold;text-align:center"></div>
   <div class="row" id="cars">
@@ -218,6 +265,7 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   <div style="text-align:center;line-height:1.4"><span style="font-size:11px;color:#78909c">車の3Dモデル: Daniel Zhabotinsky, Dahie — Sketchfab (CC-BY 4.0) ／ 景色・木: Poly Haven, ビル・ガードレール: ambientCG (CC0)</span></div>
 </div>
 
+<div id="rankDlg" class="hidden"><div class="panel rk-body"><div id="rkTitle" class="it"></div><table class="rk-table" id="rkTable"></table><div id="rkNote"></div><button class="edb" id="rkClose">とじる</button></div></div>
 <div id="tiltDlg" class="hidden"><div class="panel" style="padding:18px 20px;max-width:440px;text-align:center;line-height:1.7">
   <div class="it" style="font-size:22px;color:#ffca28;margin-bottom:6px">傾きハンドルが使えません</div>
   <div style="font-size:15px">さっきの確認で「キャンセル」が押されたため、iPhone・iPadが傾きセンサーを止めています。<br>下のボタンで読み込み直して、もう一度「START」→<b>「許可」</b>を押してください。</div>
@@ -225,7 +273,7 @@ if (/[?&]turbo\b/.test(location.search) || /turbo/i.test(location.pathname)) { d
   <div style="font-size:12px;color:#90a4ae;margin-top:10px">それでも確認が出ないときは、アプリ（またはSafari）を上にスワイプして完全に閉じてから開き直してください。</div>
   <button class="edb" id="tiltDlgClose" style="margin-top:10px">閉じる</button></div></div>
 <div id="result" class="hidden allow">
-  <div id="resBox" class="panel"><h2 class="it" id="resTitle">FINISH</h2><table id="resTable"></table></div>
+  <div id="resBox" class="panel"><h2 class="it" id="resTitle">FINISH</h2><table id="resTable"></table><div id="rankBox" class="hidden"></div></div>
   <div class="row"><button class="big-btn it" id="replayBtn" style="background:linear-gradient(#26a69a,#00796b);box-shadow:0 6px 0 #004d40">🎬 リプレイ</button><button class="big-btn it" id="again">もう一度</button><button class="big-btn it" id="toMenu" style="background:linear-gradient(#546e7a,#37474f);box-shadow:0 6px 0 #1c262b">メニュー</button></div>
 </div>
 
@@ -333,7 +381,7 @@ $('game').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xbcd3e6, 220, 1000);
 const camera = new THREE.PerspectiveCamera(62, 1, .4, 3000);
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+function resize() { renderer.setSize(LW(), LH(), false); camera.aspect = LW() / LH(); camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
 function skyColors(geo, top, mid, bot) {
@@ -519,12 +567,12 @@ function setupPost() {
   const rt = renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget ? new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, opt) : new THREE.WebGLRenderTarget(sz.x, sz.y, opt);
   composer = new THREE.EffectComposer(renderer, rt);
   composer.addPass(new THREE.RenderPass(scene, camera));
-  composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .28, .55, .92));
+  composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(LW(), LH()), .28, .55, .92));
   composer.addPass(new THREE.ShaderPass({ uniforms: { tDiffuse: { value: null } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float v = smoothstep(.95, .3, length(vUv - .5)); c.rgb *= mix(.72, 1.0, v); c.rgb = mix(vec3(dot(c.rgb, vec3(.299,.587,.114))), c.rgb, 1.08); gl_FragColor = c; }' }));
-  addEventListener('resize', () => { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight); });
-  composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight);
+  addEventListener('resize', () => { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(LW(), LH()); });
+  composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(LW(), LH());
 }
 function draw() { if (composer) composer.render(); else renderer.render(scene, camera); }
 // 夕焼けの市街地：ビル・街灯
@@ -1034,6 +1082,7 @@ function placeOnGrid(c, slot, lane) {
   c.x = t.x + t.nx * lane; c.z = t.z + t.nz * lane; c.h = Math.atan2(t.tx, t.tz); c.vx = c.vz = 0; c.cum = sf; c.idx = ((Math.round(sf) % N) + N) % N;
 }
 function startRace() {
+  rankRace = null; $('rankBox').classList.add('hidden');
   audioInit(); ensureCourse(); stopFx(); rec = []; recN = 0; recLapStart = 0;  $('hud').classList.remove('hidden');
   for (const o of [player, ...ais]) if (o) scene.remove(o.car.root);
   const si = selCar; lapsTotal = selLaps;
@@ -1345,6 +1394,7 @@ function simulate(dt) {
 }
 function rank() { if (!ais.length) return 1; let r = 1; for (const a of ais) if (a.s > player.cumF) r++; return r; }
 function finishRace() {
+  rankRace = lapTimes.length ? { t: Math.min(...lapTimes), board: rankBoard() } : null;
   if (TURBO) turboStop();
   finished = true; finishTime = raceT; finishRank = selMode === 'race' ? 1 + ais.filter(a => a.finished).length : 1;
   recLapStart = recPrevLap;
@@ -1357,7 +1407,8 @@ function showResult() {
   lapTimes.forEach((t, i) => { h += `<tr><td>LAP ${i + 1}</td><td>${fmt(t)}${t === Math.min(...lapTimes) ? ' ★' : ''}</td></tr>`; });
   h += `<tr><td>ベストラップ（記録）</td><td>${fmt(bestLap)}</td></tr><tr><td>ドリフトポイント</td><td>${Math.floor(driftTotal)}</td></tr>`;
   if (TURBO) h += turboResultRows();
-  $('resTable').innerHTML = h; $('resTitle').textContent = selMode === 'race' ? `${finishRank}位 FINISH` : 'FINISH'; $('result').classList.remove('hidden');
+  $('resTable').innerHTML = h;
+  if (rankRace) { if (rankRace.shown) $('rankBox').classList.remove('hidden'); else rankAfterRace(); } else $('rankBox').classList.add('hidden'); $('resTitle').textContent = selMode === 'race' ? `${finishRank}位 FINISH` : 'FINISH'; $('result').classList.remove('hidden');
 }
 
 /* =============== えんしゅつ =============== */
@@ -1433,7 +1484,7 @@ function drawMini() {
 }
 function menuCam(rdt) {
   // ボタンに かくれていない所（左 or 上）の まん中に 車が来るように カメラをずらす
-  const W = innerWidth, H = innerHeight, mr = $('menu').getBoundingClientRect();
+  const W = LW(), H = LH(), mr = localRect($('menu'));
   let fx = W / 2, fy = H / 2, fw = W, fh = H;
   if (mr.width > 0 && mr.left > 40) { fw = mr.left; fx = fw / 2; } else if (mr.height > 0 && mr.top > 40) { fh = mr.top; fy = fh / 2; }
   camera.setViewOffset(W, H, W / 2 - fx, H / 2 - fy, W, H);
@@ -1456,7 +1507,47 @@ addEventListener('deviceorientation', e => {
   const b = e.beta * Math.PI / 180, g = e.gamma * Math.PI / 180, ux = -Math.sin(g) * Math.cos(b), uy = Math.sin(b);
   if (Math.hypot(ux, uy) < .2) return;   // ほぼ水平に寝かせているときは 角度が決まらないので そのまま
   tiltHas = true; tiltRoll = Math.atan2(uy, ux) * 57.2958;
+  rotSense(ux, uy);
 });
+/* =============== 横持ち（縦向きロック中でも OK） =============== */
+// 画面は たてのまま（ロック中）なのに スマホを横に持っていたら、ゲームの画面を 90°回す。レース中は 切りかえない
+let rotAuto = false, rotPend = null, rotSeen = false;
+try { rotAuto = localStorage.getItem('apex.rotAuto') === '1'; } catch (e) {}
+const coarse = matchMedia('(pointer: coarse)').matches;
+function rotSense(ux, uy) {
+  rotSeen = true; if (!rotAuto) return;
+  if (innerWidth > innerHeight) { if (VIEW.deg) setRot(0); rotPend = null; return; }
+  if (state === 'racing' || state === 'countdown') { rotPend = null; return; }
+  let want = VIEW.deg;
+  if (Math.abs(ux) > .8 && Math.abs(uy) < .55) want = ux > 0 ? 90 : -90; else if (uy > .8) want = 0;
+  if (want === VIEW.deg) { rotPend = null; return; }
+  const now = performance.now();
+  if (!rotPend || rotPend.w !== want) rotPend = { w: want, t: now }; else if (now - rotPend.t > 600) { rotPend = null; setRot(want); rotUI(); }
+}
+function rotUI() {
+  const b = $('rotBtn'), show = coarse && (innerHeight > innerWidth || VIEW.deg);
+  b.classList.toggle('hidden', !show);
+  b.innerHTML = VIEW.deg ? '↻ 画面の向きを かえる<small>うまく回らないときに</small>' : rotAuto ? '📱 スマホを横にしてね<small>縦向きロック中でも 横で遊べます</small>' : '📱 横向きで遊ぶ<small>縦向きロック中でも OK</small>';
+}
+$('rotBtn').addEventListener('click', async () => {
+  let ok = true;
+  try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) ok = (await DeviceOrientationEvent.requestPermission()) === 'granted'; } catch (e) { ok = false; }
+  if (ok && !rotAuto) { rotAuto = true; try { localStorage.setItem('apex.rotAuto', '1'); } catch (e) {} setTimeout(() => { if (!VIEW.deg && innerHeight > innerWidth) setRot(90); rotUI(); }, 900); rotUI(); return; }
+  // センサーが使えないとき・回る向きが ちがうとき：ボタンで 90 → -90 → たて の順に かえる
+  setRot(VIEW.deg === 0 ? 90 : VIEW.deg === 90 ? -90 : 0); rotUI();
+});
+// 前に「横向きで遊ぶ」を えらんだ人：さいしょに さわった時に センサーの許可を もらいなおす（iPhoneは 毎回 必要）
+if (rotAuto && typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+  const once = () => { removeEventListener('touchend', once); DeviceOrientationEvent.requestPermission().catch(() => {}); };
+  addEventListener('touchend', once);
+}
+addEventListener('resize', () => setTimeout(rotUI, 50)); rotUI();
+// 回した画面での たてスクロール（ブラウザまかせだと 向きがずれるので 自分で動かす）
+{ let rs = null;
+  document.addEventListener('touchstart', e => { if (!VIEW.deg) return; const el = e.target.closest('#menu, #result, #edList, #edShareBox, #rankDlg .rk-body'); if (!el) return;
+    const p = toLocal(e.touches[0].clientX, e.touches[0].clientY); rs = { el, y: p.y, st: el.scrollTop }; }, { passive: true });
+  document.addEventListener('touchmove', e => { if (!rs) return; const p = toLocal(e.touches[0].clientX, e.touches[0].clientY); rs.el.scrollTop = rs.st - (p.y - rs.y); e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchend', () => { rs = null; }); }
 addEventListener('orientationchange', () => setTimeout(() => { tiltZero = tiltRoll; }, 400));
 addEventListener('resize', () => setTimeout(() => { tiltZero = tiltRoll; }, 400));
 async function enableTilt() {
@@ -1544,7 +1635,7 @@ function edUpdate() {
 function edSched() { if (ED.raf) return; ED.raf = requestAnimationFrame(() => { ED.raf = 0; edUpdate(); }); }
 function edPush() { ED.hist.push(JSON.stringify(ED.pts)); if (ED.hist.length > 40) ED.hist.shift(); }
 function edToast(t) { const e = $('edToast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(edToast.t); edToast.t = setTimeout(() => e.classList.add('hidden'), 2200); }
-function edSize() { const r = edCv.getBoundingClientRect(); ED.dpr = Math.min(devicePixelRatio || 1, 2); edCv.width = Math.max(10, r.width * ED.dpr); edCv.height = Math.max(10, r.height * ED.dpr); }
+function edSize() { const r = localRect(edCv); ED.dpr = Math.min(devicePixelRatio || 1, 2); edCv.width = Math.max(10, r.width * ED.dpr); edCv.height = Math.max(10, r.height * ED.dpr); }
 function edFit() {
   const v = ED.view, W = edCv.width, H = edCv.height;
   if (!ED.pts.length) { v.cx = 0; v.cz = 0; v.sc = Math.min(W, H) / 950; return; }
@@ -1578,7 +1669,7 @@ function edDraw() {
   ED.pts.forEach((p, i) => { g.fillStyle = i === ED.sel ? '#ff9100' : i === 0 ? '#ffca28' : '#fff'; g.strokeStyle = '#111'; g.lineWidth = 2 * d; g.beginPath(); g.arc(sx(p[0]), sy(p[1]), 10 * d, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#111'; g.font = `bold ${10 * d}px sans-serif`; g.textAlign = 'center'; g.fillText(i + 1, sx(p[0]), sy(p[1]) + 3.5 * d); g.textAlign = 'left'; });
   if (!ED.pts.length) { g.fillStyle = 'rgba(255,255,255,.85)'; g.font = `bold ${20 * d}px sans-serif`; g.textAlign = 'center'; g.fillText('タップして点をおいていこう', W / 2, H / 2); g.font = `${14 * d}px sans-serif`; g.fillText('ぐるっと一周するように。または上の「お手本」から始めてもOK', W / 2, H / 2 + 28 * d); g.textAlign = 'left'; }
 }
-const edPos = e => { const r = edCv.getBoundingClientRect(); return { x: (e.clientX - r.left) * ED.dpr, y: (e.clientY - r.top) * ED.dpr }; };
+const edPos = e => { const r = localRect(edCv), p = toLocal(e.clientX, e.clientY); return { x: (p.x - r.left) * ED.dpr, y: (p.y - r.top) * ED.dpr }; };
 const edW = p => ({ x: (p.x - edCv.width / 2) / ED.view.sc + ED.view.cx, z: (p.y - edCv.height / 2) / ED.view.sc + ED.view.cz });
 function edHit(p) { let best = -1, bd = (26 * ED.dpr) ** 2; ED.pts.forEach((q, i) => { const sx = (q[0] - ED.view.cx) * ED.view.sc + edCv.width / 2, sy = (q[1] - ED.view.cz) * ED.view.sc + edCv.height / 2, d = (sx - p.x) ** 2 + (sy - p.y) ** 2; if (d < bd) { bd = d; best = i; } }); return best; }
 function edInsert(w) {
@@ -1832,7 +1923,7 @@ function replayCamera(rdt, c) {
 }
 // ゴールの はなび・かみふぶき
 const fxC = $('fxCanvas'), fxG = fxC.getContext('2d'); let fxOn = 0, fxT = 0, conf = [], sparks = [], rockets = [], fxNext = 0;
-function fxResize() { fxC.width = innerWidth; fxC.height = innerHeight; } addEventListener('resize', fxResize); fxResize();
+function fxResize() { fxC.width = LW(); fxC.height = LH(); } addEventListener('resize', fxResize); fxResize();
 const FX_COL = ['#ff5252', '#ffca28', '#69f0ae', '#40c4ff', '#ea80fc', '#ffffff', '#ff9100'];
 function sfxFanfare() {
   const seq = [[523, 0], [659, .13], [784, .26], [1047, .4], [784, .62], [1047, .74], [1319, .9]];
@@ -2040,7 +2131,77 @@ if (TURBO) {
   $('qSay').addEventListener('click', () => tq && say(tq.say));
 }
 
-window.__apex = { turboDbg: () => ({ tPhase, tT, gate: tGate && tGate.cum, ans: tGate && GATE_LAT[tGate.order.findIndex(c => c.correct)], cum: player && player.cumF, ok: tOk, total: tTotal }), BUILTIN, buildTR, edSpline, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
+/* =============== タイムランキング（コースごと・ベストラップ 上位10位） =============== */
+// 端末に保存しつつ、Firestore の ranks/{ボード} で みんなと共有する。名前は アルファベット3文字
+const RANK_N = 10, LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const rankBoard = () => (TURBO ? 'turbo' : 'apex') + '_' + String(courseKey).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40);
+const rankUrl = b => `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents/ranks/${b}?key=${FB.apiKey}`;
+const rankLocal = b => { try { const a = JSON.parse(localStorage.getItem('apex.rank.' + b) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+const rankLocalSet = (b, a) => { try { localStorage.setItem('apex.rank.' + b, JSON.stringify(a)); } catch (e) {} };
+const rankOk = e => e && /^[A-Z]{3}$/.test(e.n) && typeof e.t === 'number' && e.t > 5 && e.t < 3600;
+function rankMerge(...lists) {
+  const seen = new Set(), out = [];
+  for (const e of lists.flat()) { if (!rankOk(e)) continue; const k = e.n + '|' + e.t.toFixed(3) + '|' + (e.d || 0); if (seen.has(k)) continue; seen.add(k); out.push(e); }
+  return out.sort((a, b) => a.t - b.t).slice(0, RANK_N);
+}
+let rankCloudOk = true;
+async function rankFetch(b) {
+  let remote = [];
+  try { const r = await fetch(rankUrl(b), { cache: 'no-store' }); if (r.ok) { const f = (await r.json()).fields || {}; remote = JSON.parse((f.list && f.list.stringValue) || '[]'); rankCloudOk = true; } else if (r.status !== 404) rankCloudOk = false; } catch (e) { rankCloudOk = false; }
+  const m = rankMerge(rankLocal(b), Array.isArray(remote) ? remote : []); rankLocalSet(b, m); return m;
+}
+async function rankPush(b, list) {
+  rankLocalSet(b, list);
+  try { const r = await fetch(rankUrl(b), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { list: { stringValue: JSON.stringify(list) }, updated: { integerValue: String(Date.now()) } } }) }); rankCloudOk = r.ok; } catch (e) { rankCloudOk = false; }
+}
+const carName = i => { const b = document.querySelector(`#cars [data-car="${i}"]`); return b ? b.firstChild.textContent.trim() : ''; };
+function rankTable(list, hiIdx) {
+  if (!list.length) return '<tr><td colspan="4" style="text-align:center;color:#90a4ae">まだ 記録が ありません。1位を ねらおう！</td></tr>';
+  return list.map((e, i) => `<tr class="${i === hiIdx ? 'rk-me' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '位'}</td><td class="rk-n">${e.n}</td><td class="rk-c">${carName(e.c)}</td><td>${fmt(e.t)}</td></tr>`).join('');
+}
+const cloudNote = () => rankCloudOk ? '' : '<div class="rk-note">（いまは この端末の記録だけ。ネットにつながると みんなの記録も 見られます）</div>';
+// レースの あと：ランクインしたら 名前を入れる
+let rankRace = null;
+async function rankAfterRace() {
+  if (!rankRace || rankRace.shown) return; rankRace.shown = true;
+  const box = $('rankBox'), b = rankRace.board, t = rankRace.t; box.classList.remove('hidden'); box.innerHTML = '<div class="rk-msg">🏆 ランキングを よみこみ中…</div>';
+  const list = await rankFetch(b); const pos = list.filter(e => e.t <= t).length;
+  if (pos >= RANK_N) { box.innerHTML = `<div class="rk-msg">ベストラップ ${fmt(t)} ／ 10位まで あと <b>${(t - list[RANK_N - 1].t).toFixed(2)}秒</b>！</div><table class="rk-table">${rankTable(list, -1)}</table>${cloudNote()}`; return; }
+  let name = ''; try { name = localStorage.getItem('apex.initials') || ''; } catch (e) {} if (!/^[A-Z]{3}$/.test(name)) name = '';
+  let cur = name.split('');
+  const draw = () => {
+    box.innerHTML = `<div class="rk-msg">🏆 ランキング <b>${pos + 1}位</b>！ ベストラップ ${fmt(t)}<br>なまえを アルファベット3文字で 入れてね</div>
+      <div class="rk-name">${[0, 1, 2].map(i => `<span class="${i === cur.length ? 'cur' : ''}">${cur[i] || '_'}</span>`).join('')}</div>
+      <div class="rk-keys">${LETTERS.split('').map(c => `<button data-k="${c}">${c}</button>`).join('')}<button data-k="del" class="rk-del">⌫</button><button data-k="ok" class="rk-ok" ${cur.length === 3 ? '' : 'disabled'}>けってい</button></div>`;
+    box.querySelectorAll('.rk-keys button').forEach(btn => btn.addEventListener('click', () => key(btn.dataset.k)));
+  };
+  const key = k => {
+    if (!rankRace || rankRace.saved) return;
+    if (k === 'del') cur.pop(); else if (k === 'ok') { if (cur.length === 3) return save(); } else if (cur.length < 3) cur.push(k);
+    draw();
+  };
+  const save = async () => {
+    rankRace.saved = true; const n = cur.join(''); try { localStorage.setItem('apex.initials', n); } catch (e) {}
+    const me = { n, t: Math.round(t * 1000) / 1000, c: selCar, d: Date.now() };
+    box.innerHTML = '<div class="rk-msg">きろく中…</div>';
+    const latest = await rankFetch(b), merged = rankMerge(latest, [me]); await rankPush(b, merged);
+    const idx = merged.findIndex(e => e.d === me.d && e.n === me.n);
+    box.innerHTML = `<div class="rk-msg">${n} さん、${idx + 1}位に きろくしたよ！</div><table class="rk-table">${rankTable(merged, idx)}</table>${cloudNote()}`;
+  };
+  rankRace.key = key; draw();
+}
+addEventListener('keydown', e => { if (!rankRace || rankRace.saved || !rankRace.key || $('result').classList.contains('hidden')) return;
+  const k = e.key.toUpperCase(); if (/^[A-Z]$/.test(k)) rankRace.key(k); else if (e.key === 'Backspace') rankRace.key('del'); else if (e.key === 'Enter') rankRace.key('ok'); });
+// メニューの「ランキング」
+async function rankOpen() {
+  ensureCourse(); const b = rankBoard(), dlg = $('rankDlg');
+  const cname = (document.querySelector('#courseRow .opt.sel') || {}).firstChild; $('rkTitle').textContent = '🏆 ' + (cname ? cname.textContent.trim() : 'コース') + ' ベストラップ TOP10';
+  $('rkTable').innerHTML = '<tr><td>よみこみ中…</td></tr>'; dlg.classList.remove('hidden');
+  const list = await rankFetch(b); $('rkTable').innerHTML = rankTable(list, -1); $('rkNote').innerHTML = cloudNote();
+}
+$('rankBtn').addEventListener('click', rankOpen); $('rkClose').addEventListener('click', () => $('rankDlg').classList.add('hidden'));
+
+window.__apex = { get rankRace() { return rankRace; }, rankBoard, rankTest: t => { rankRace = { t, board: rankBoard() }; $('menu').classList.add('hidden'); $('result').classList.remove('hidden'); $('resTable').innerHTML = ''; rankAfterRace(); },  turboDbg: () => ({ tPhase, tT, gate: tGate && tGate.cum, ans: tGate && GATE_LAT[tGate.order.findIndex(c => c.correct)], cum: player && player.cumF, ok: tOk, total: tTotal }), BUILTIN, buildTR, edSpline, applyTheme, get courseSelV() { return courseSel; }, setCourse: c => { courseSel = c; ensureCourse(); }, bgmRender, get bgmTrack() { return bgmTrack; }, FB, cloudSync, mergeCourses, get syncId() { return syncId; }, startReplay, get rec() { return rec; }, get recLapStart() { return recLapStart; }, get player() { return player; }, get TR() { return TR; }, ED, edAnalyze, edSet, edPresetPts, startRace, get state() { return state; }, get course() { return courseKey; }, keys, tch, setCam: m => camMode = m };
 requestAnimationFrame(frame);
 })();
 </script>
